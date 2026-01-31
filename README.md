@@ -19,7 +19,8 @@
 - **Job Management**
   - **Rich Job Posting:** Create jobs with detailed descriptions, location, urgency levels, and multimedia attachments (Images & **Video**).
   - **Smart Matching:** "Hungarian Matching Engine" automatically pairs jobs with the best-suited workers based on skills, location, and rating.
-  - **Job Lifecycle:** Full state machine tracking (Pending → Matched → In Progress → Completed → Paid).
+  - **Job Lifecycle:** Full state machine tracking (Pending → Matched → Assigned → **En Route** → In Progress → Completed → Paid).
+  - **Live Tracking:** Real-time map view allowing customers to track workers' location when they are en route.
 - **Communication & Support**
   - **Real-Time Chat:** Instant messaging between Customer and Worker (powered by Socket.io).
   - **AI Assistant:** Context-aware AI chatbot (Gemini-powered) to assist customers with job details and platform navigation.
@@ -33,7 +34,6 @@
 
 ### 🚧 In Development (Roadmap)
 
-- **Live Location Tracking:** Real-time GPS tracking on an interactive map.
 - **Voice Notes:** Audio messaging support in chat.
 - **Localization (I18n):** Multi-language support (English/Hindi).
 - **Video Consultation:** Pre-booking video calls for complex job estimations.
@@ -50,6 +50,7 @@
 - **Real-time:** Socket.io Client
 - **Routing:** React Router DOM v6
 - **HTTP Client:** Axios with Interceptors
+- **Maps:** Leaflet & React Leaflet (Interactive Maps)
 - **UI Components:** Lucide React (Icons), Framer Motion (Animations)
 
 ### Backend Architecture

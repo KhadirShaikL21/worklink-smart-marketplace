@@ -10,11 +10,11 @@
 
 ## Phase 2: Real-Time Location
 
-- [ ] **Live Map & Tracking**
-  - [ ] Frontend (Worker): "Start Travel" button to begin location tracking.
-  - [ ] Frontend (Worker): Capture GPS coordinates and emit via Socket.io.
-  - [ ] Frontend (Customer): Integrate Leaflet/Google Maps to show Worker icon moving.
-  - [ ] Backend: Handle location socket events and relay to specific room.
+- [x] **Live Map & Tracking**
+  - [x] Frontend (Worker): "Start Travel" button to begin location tracking.
+  - [x] Frontend (Worker): Capture GPS coordinates and emit via Socket.io.
+  - [x] Frontend (Customer): Integrate Leaflet/Google Maps to show Worker icon moving.
+  - [x] Backend: Handle location socket events and relay to specific room.
 
 ## Phase 3: Communication & Accessibility
 
