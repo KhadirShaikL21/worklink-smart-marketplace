@@ -280,6 +280,36 @@ export async function listMyJobs(req, res) {
   return res.json({ jobs });
 }
 
+export async function startTravel(req, res) {
+  const { jobId } = req.params;
+  const job = await Job.findById(jobId);
+  if (!job) return res.status(404).json({ message: 'Job not found' });
+
+  // Check if user is an assigned worker
+  const isAssigned = job.assignedWorkers.some(w => w.toString() === req.user._id.toString());
+  if (!isAssigned) {
+    return res.status(403).json({ message: 'Only assigned workers can start travel' });
+  }
+
+  if (job.status !== 'assigned') {
+    return res.status(400).json({ message: `Job is already ${job.status}` });
+  }
+
+  job.status = 'en_route';
+  await job.save();
+
+  // Notify Customer
+  await notify({
+    userId: job.customer,
+    type: 'job_update',
+    title: 'Worker En Route',
+    body: `Worker is on the way to your location`,
+    metadata: { jobId: job._id }
+  });
+
+  return res.json({ message: 'Travel started', job });
+}
+
 export async function verifyStartOtp(req, res) {
   const { jobId } = req.params;
   const { otp } = req.body;
@@ -293,7 +323,7 @@ export async function verifyStartOtp(req, res) {
     return res.status(403).json({ message: 'Only assigned workers can start the job' });
   }
 
-  if (job.status !== 'assigned') {
+  if (job.status !== 'assigned' && job.status !== 'en_route') {
     return res.status(400).json({ message: `Job is already ${job.status}` });
   }
 

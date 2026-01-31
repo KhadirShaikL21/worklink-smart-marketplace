@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Calendar, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Star, Briefcase, Lock, Upload, Video, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { MapPin, Calendar, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Star, Briefcase, Lock, Upload, Video, Image as ImageIcon, Loader2, Navigation } from 'lucide-react';
 import PaymentModal from '../components/PaymentModal';
+import JobTrackingMap from '../components/JobTrackingMap';
 import { JobDetailSkeleton } from '../components/ui/Skeleton.jsx';
 
 export default function JobDetail() {
@@ -98,6 +99,16 @@ export default function JobDetail() {
       setError(err.response?.data?.message || 'Failed to start job');
     } finally {
       setStarting(false);
+    }
+  };
+
+  const startTravel = async () => {
+    try {
+      await api.post(`/api/jobs/${jobId}/start-travel`);
+      setStatusMsg('Travel started! Customer notified.');
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to start travel');
     }
   };
 
@@ -206,6 +217,37 @@ export default function JobDetail() {
                 ))}
               </div>
             </div>
+
+            {/* Map & Tracking Section */}
+            {(job.status === 'assigned' || job.status === 'en_route' || job.status === 'in_progress') && (
+              <div className="mt-8 border-t border-gray-100 pt-6">
+                 <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                      <MapPin className="w-5 h-5 mr-2 text-primary-600" />
+                      Live Location Tracking
+                    </h3>
+                    {/* Worker Action: Start Travel */}
+                    {job.assignedWorkers?.some(w => (w._id || w) === user?._id) && job.status === 'assigned' && (
+                      <button
+                        onClick={startTravel}
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      >
+                        <Navigation className="w-4 h-4 mr-2" />
+                        Start Travel
+                      </button>
+                    )}
+                     {job.status === 'en_route' && (
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 animate-pulse">
+                          Worker En Route
+                        </span>
+                     )}
+                 </div>
+                 <JobTrackingMap 
+                    job={job} 
+                    userRole={job.customer === user?._id ? 'customer' : 'worker'} 
+                 />
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -407,7 +449,7 @@ export default function JobDetail() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* OTP Section */}
-          {job.status === 'assigned' && (
+          {(job.status === 'assigned' || job.status === 'en_route') && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
                 <Lock className="w-5 h-5 mr-2 text-primary-600" />
