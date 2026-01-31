@@ -61,15 +61,21 @@ export async function updateMyProfile(req, res) {
   return res.json({ profile });
 }
 
+import Rating from '../models/Rating.js';
+
 export async function getWorkerById(req, res) {
   const { id } = req.params;
   try {
     const profile = await WorkerProfile.findOne({ user: id }).populate('user', 'name email phone roles avatarUrl verification ratingStats');
     
+    // Fetch recent reviews
+    const reviews = await Rating.find({ worker: id })
+      .populate('customer', 'name avatarUrl')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
     // Fix: If profile exists but user is null (orphaned), treat as not found or handle gracefully
     if (profile && !profile.user) {
-       // Cleanup orphan profile optionally, or just return 404
-       // await WorkerProfile.deleteOne({ _id: profile._id });
        return res.status(404).json({ message: 'Worker user not found' });
     }
 
@@ -87,7 +93,15 @@ export async function getWorkerById(req, res) {
           avatarUrl: user.avatarUrl,
           verification: user.verification,
           ratingStats: user.ratingStats,
-          workerProfile: null
+          workerProfile: null,
+          reviews: reviews.map(r => ({
+            id: r._id,
+            reviewerName: r.customer?.name || 'Anonymous',
+            reviewerAvatar: r.customer?.avatarUrl,
+            rating: r.overall,
+            comment: r.review,
+            date: r.createdAt
+          }))
         }
       });
     }
@@ -112,7 +126,15 @@ export async function getWorkerById(req, res) {
           availability: profile.availability,
           isAvailable: profile.isAvailable,
           completedJobs: profile.completedJobs
-        }
+        },
+        reviews: reviews.map(r => ({
+          id: r._id,
+          reviewerName: r.customer?.name || 'Anonymous',
+          reviewerAvatar: r.customer?.avatarUrl,
+          rating: r.overall,
+          comment: r.review,
+          date: r.createdAt
+        }))
       }
     });
   } catch (err) {

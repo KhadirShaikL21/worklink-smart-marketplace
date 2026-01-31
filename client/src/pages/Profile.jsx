@@ -215,6 +215,163 @@ export default function Profile() {
             )}
           </div>
 
+          {!isEditing && (
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+               {/* Left Column - Stats & Info */}
+               <div className="md:col-span-1 space-y-6">
+                 {/* Rating Card */}
+                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Rating & Stats</h3>
+                   <div className="flex items-center mb-4">
+                     <span className="text-4xl font-bold text-gray-900 mr-3">{user.ratingStats?.average || '0.0'}</span>
+                     <div>
+                       <div className="flex text-yellow-400">
+                         {[1, 2, 3, 4, 5].map((s) => (
+                           <Star key={s} className={`w-5 h-5 ${s <= Math.round(user.ratingStats?.average || 0) ? 'fill-current' : 'text-gray-300'}`} />
+                         ))}
+                       </div>
+                       <p className="text-sm text-gray-500 mt-1">{user.ratingStats?.count || 0} Reviews</p>
+                     </div>
+                   </div>
+                   
+                   <div className="space-y-3 pt-3 border-t border-gray-100">
+                     <div className="flex justify-between text-sm">
+                       <span className="text-gray-600">Jobs Completed</span>
+                       <span className="font-medium text-gray-900">{user.workerProfile?.completedJobs || user.completedJobs || 0}</span>
+                     </div>
+                     <div className="flex justify-between text-sm">
+                       <span className="text-gray-600">Hourly Rate</span>
+                       <span className="font-medium text-gray-900">₹{user.workerProfile?.hourlyRate || 0}/hr</span>
+                     </div>
+                     <div className="flex justify-between text-sm">
+                       <span className="text-gray-600">Experience</span>
+                       <span className="font-medium text-gray-900">{user.workerProfile?.experienceYears || 0} Years</span>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Contact & Verification */}
+                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Verification</h3>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center text-sm">
+                           <Mail className="w-4 h-4 mr-2 text-gray-400" />
+                           <span className="text-gray-600">Email</span>
+                         </div>
+                         {user.verification?.emailVerified ? (
+                           <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs font-medium flex items-center">
+                             <CheckCircle className="w-3 h-3 mr-1" /> Verified
+                           </span>
+                         ) : (
+                           <span className="text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded text-xs font-medium flex items-center">
+                             Pending
+                           </span>
+                         )}
+                      </div>
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center text-sm">
+                           <Phone className="w-4 h-4 mr-2 text-gray-400" />
+                           <span className="text-gray-600">Phone</span>
+                         </div>
+                         {user.verification?.phoneVerified ? (
+                           <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs font-medium flex items-center">
+                             <CheckCircle className="w-3 h-3 mr-1" /> Verified
+                           </span>
+                         ) : (
+                           <span className="text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded text-xs font-medium flex items-center">
+                             Pending
+                           </span>
+                         )}
+                      </div>
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center text-sm">
+                           <Shield className="w-4 h-4 mr-2 text-gray-400" />
+                           <span className="text-gray-600">Identity</span>
+                         </div>
+                         {user.verification?.identityVerified ? (
+                           <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-xs font-medium flex items-center">
+                             <CheckCircle className="w-3 h-3 mr-1" /> Verified
+                           </span>
+                         ) : (
+                           <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded text-xs font-medium flex items-center">
+                             Unverified
+                           </span>
+                         )}
+                      </div>
+                    </div>
+                 </div>
+               </div>
+
+               {/* Right Column - Bio, Skills, Reviews */}
+               <div className="md:col-span-2 space-y-6">
+                 {/* Bio */}
+                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-3">About</h3>
+                   <p className="text-gray-600 leading-relaxed whitespace-pre-line">
+                     {user.workerProfile?.bio || "This user hasn't added a bio yet."}
+                   </p>
+                 </div>
+
+                 {/* Skills */}
+                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-3">Skills</h3>
+                   <div className="flex flex-wrap gap-2">
+                     {user.workerProfile?.skills && user.workerProfile.skills.length > 0 ? (
+                       user.workerProfile.skills.map((skill, i) => (
+                         <span key={i} className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
+                           {skill}
+                         </span>
+                       ))
+                     ) : (
+                       <span className="text-gray-500 italic">No skills listed.</span>
+                     )}
+                   </div>
+                 </div>
+
+                 {/* Reviews Section */}
+                 <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
+                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Client Reviews</h3>
+                   <div className="space-y-6">
+                     {user.reviews && user.reviews.length > 0 ? (
+                       user.reviews.map(review => (
+                         <div key={review.id} className="border-b border-gray-100 last:border-0 pb-6 last:pb-0">
+                           <div className="flex items-start justify-between">
+                             <div className="flex items-center gap-3">
+                               <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
+                                 {review.reviewerAvatar ? (
+                                   <img src={review.reviewerAvatar} alt="" className="w-full h-full object-cover" />
+                                 ) : (
+                                   <span className="text-gray-500 font-bold">{review.reviewerName?.charAt(0)}</span>
+                                 )}
+                               </div>
+                               <div>
+                                 <p className="text-sm font-medium text-gray-900">{review.reviewerName}</p>
+                                 <p className="text-xs text-gray-500">{new Date(review.date).toLocaleDateString()}</p>
+                               </div>
+                             </div>
+                             <div className="flex text-yellow-400">
+                               {[1, 2, 3, 4, 5].map((s) => (
+                                 <Star key={s} className={`w-4 h-4 ${s <= Math.round(review.rating) ? 'fill-current' : 'text-gray-300'}`} />
+                               ))}
+                             </div>
+                           </div>
+                           {review.comment && (
+                             <p className="mt-3 text-sm text-gray-600">{review.comment}</p>
+                           )}
+                         </div>
+                       ))
+                     ) : (
+                       <div className="text-center py-6 text-gray-500">
+                         <p>No reviews yet.</p>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               </div>
+             </div>
+          )}
+
           {isEditing ? (
             <form onSubmit={handleUpdateProfile} className="space-y-6 bg-gray-50 p-6 rounded-xl border border-gray-200">
               <div className="flex justify-between items-center mb-4">
