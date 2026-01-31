@@ -1,270 +1,386 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import WorkerProfile from '../models/WorkerProfile.js';
 import Job from '../models/Job.js';
 import Task from '../models/Task.js';
+import Rating from '../models/Rating.js';
+import Payment from '../models/Payment.js';
+
+console.log('Seed script started...');
 
 dotenv.config();
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/worklink';
+console.log('Using Mongo URI:', MONGO_URI);
+
+
+// Common password hash for '123456'
+// We'll pre-calculate it or bcrypt it in the script, 
+// preferably just let User modal pre-save hook handle it if we create instances directly, 
+// or hash it manually if using insertMany (which bypasses pre-save).
+// To be safe and consistent with "Delete all data... add passwords as 123456", we will use the plain '123456' 
+// and instantiate Users so the hook runs, OR manually hash it. 
+// A manual hash is faster for bulk operations.
+const SALT = bcrypt.genSaltSync(10);
+const HASHED_PASSWORD_123456 = bcrypt.hashSync('123456', SALT);
+
+// --- Sample Data ---
 
 const workersData = [
   {
     name: 'Raj Plumber',
     email: 'raj.plumber@example.com',
-    phone: '+910000000001',
-    password: 'Password123',
+    phone: '+919876543210',
+    passwordHash: HASHED_PASSWORD_123456,
     roles: ['worker', 'customer'],
     isWorker: true,
     isCustomer: true,
+    verification: { emailVerified: true, phoneVerified: true, identityVerified: true, adminApproved: true },
     profile: {
-      title: 'Plumber & Pipe Fitter',
-      skills: ['plumbing', 'leak repair', 'pipe fitting'],
+      title: 'Expert Residential Plumber',
+      skills: ['plumbing', 'leak repair', 'pipe fitting', 'bathroom', 'kitchen'],
       experienceYears: 6,
-      hourlyRate: 12,
-      languages: ['en', 'hi'],
-      bio: 'Certified plumber specializing in leak fixes and bathroom fittings.',
+      hourlyRate: 500,
+      languages: ['en', 'hi', 'mr'],
+      bio: 'Certified plumber specializing in leak fixes, bathroom fittings, and emergency pipe repairs. 6 years of experience in high-rise buildings and residential complexes.',
       location: { type: 'Point', coordinates: [72.8777, 19.076], radiusKm: 25 }, // Mumbai
-      availability: { days: ['mon', 'tue', 'wed', 'thu', 'fri'], hours: { start: '08:00', end: '18:00' } },
-      toolsOwned: ['pipe wrench', 'plunger', 'pipe cutter'],
-      certifications: [{ label: 'City Plumbing Cert', url: '' }]
+      availability: { days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'], hours: { start: '08:00', end: '20:00' } },
+      toolsOwned: ['pipe wrench', 'plunger', 'pipe cutter', 'drill machine'],
+      certifications: [{ label: 'City Plumbing Cert', url: 'https://placehold.co/400x300?text=Certificate' }]
     }
   },
   {
     name: 'Priya Electrician',
     email: 'priya.electrician@example.com',
-    phone: '+910000000002',
-    password: 'Password123',
+    phone: '+919876543211',
+    passwordHash: HASHED_PASSWORD_123456,
     roles: ['worker', 'customer'],
     isWorker: true,
     isCustomer: true,
+    verification: { emailVerified: true, phoneVerified: true, identityVerified: true, adminApproved: true },
     profile: {
-      title: 'Residential Electrician',
-      skills: ['electrical', 'wiring', 'panel upgrade'],
-      experienceYears: 5,
-      hourlyRate: 14,
-      languages: ['en', 'hi'],
-      bio: 'Handles home rewiring, fans, lights, and safety checks.',
+      title: 'Senior Electrician',
+      skills: ['electrical', 'wiring', 'panel upgrade', 'lighting', 'fan install'],
+      experienceYears: 8,
+      hourlyRate: 650,
+      languages: ['en', 'hi', 'kn'],
+      bio: 'Handles home rewiring, fans, lights, and safety checks. Expert in fixing short circuits and installing smart home devices.',
       location: { type: 'Point', coordinates: [77.5946, 12.9716], radiusKm: 20 }, // Bangalore
-      availability: { days: ['mon', 'tue', 'wed', 'thu', 'sat'], hours: { start: '09:00', end: '19:00' } },
-      toolsOwned: ['multimeter', 'tester', 'ladder'],
-      certifications: [{ label: 'Certified Residential Electrician', url: '' }]
+      availability: { days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat'], hours: { start: '09:00', end: '19:00' } },
+      toolsOwned: ['multimeter', 'tester', 'ladder', 'insulated pliers'],
+      certifications: [{ label: 'Certified Residential Electrician', url: 'https://placehold.co/400x300?text=Certificate' }]
     }
   },
   {
     name: 'Aman Carpenter',
     email: 'aman.carpenter@example.com',
-    phone: '+910000000003',
-    password: 'Password123',
+    phone: '+919876543212',
+    passwordHash: HASHED_PASSWORD_123456,
     roles: ['worker', 'customer'],
     isWorker: true,
     isCustomer: true,
+    verification: { emailVerified: true, phoneVerified: true, identityVerified: true, adminApproved: true },
     profile: {
-      title: 'Carpenter & Furniture Maker',
-      skills: ['carpentry', 'furniture repair', 'modular'],
-      experienceYears: 8,
-      hourlyRate: 15,
-      languages: ['en', 'hi'],
-      bio: 'Custom furniture, repairs, and modular fittings.',
+      title: 'Master Carpenter',
+      skills: ['carpentry', 'furniture repair', 'modular kitchen', 'door', 'wardrobe'],
+      experienceYears: 12,
+      hourlyRate: 700,
+      languages: ['en', 'hi', 'pa'],
+      bio: 'Custom furniture, repairs, and modular fittings. Specialist in space-saving furniture designs.',
       location: { type: 'Point', coordinates: [77.1025, 28.7041], radiusKm: 30 }, // Delhi
       availability: { days: ['mon', 'tue', 'wed', 'thu', 'fri'], hours: { start: '10:00', end: '18:00' } },
-      toolsOwned: ['drill', 'saw', 'sander'],
+      toolsOwned: ['drill', 'saw', 'sander', 'measuring tape'],
       certifications: []
     }
   },
   {
     name: 'Suresh Painter',
     email: 'suresh.painter@example.com',
-    phone: '+910000000004',
-    password: 'Password123',
+    phone: '+919876543213',
+    passwordHash: HASHED_PASSWORD_123456,
     roles: ['worker', 'customer'],
     isWorker: true,
     isCustomer: true,
+    verification: { emailVerified: true, phoneVerified: true, identityVerified: false, adminApproved: true },
     profile: {
-      title: 'Interior Painter',
-      skills: ['painting', 'putty', 'waterproofing'],
+      title: 'Professional Painter',
+      skills: ['painting', 'putty', 'waterproofing', 'texture'],
       experienceYears: 4,
-      hourlyRate: 11,
-      languages: ['en', 'hi'],
-      bio: 'Interior/exterior paint, texture and waterproofing.',
+      hourlyRate: 400,
+      languages: ['en', 'hi', 'te'],
+      bio: 'Interior/exterior paint, texture and waterproofing. Clean work with zero mess guarantee.',
       location: { type: 'Point', coordinates: [78.4867, 17.385], radiusKm: 20 }, // Hyderabad
-      availability: { days: ['mon', 'wed', 'fri', 'sat'], hours: { start: '09:00', end: '17:00' } },
-      toolsOwned: ['rollers', 'brushes', 'scraper'],
+      availability: { days: ['mon', 'wed', 'fri', 'sat', 'sun'], hours: { start: '09:00', end: '17:00' } },
+      toolsOwned: ['rollers', 'brushes', 'scraper', 'ladder'],
+      certifications: []
+    }
+  },
+  {
+    name: 'Anita Cleaning',
+    email: 'anita.clean@example.com',
+    phone: '+919876543214',
+    passwordHash: HASHED_PASSWORD_123456,
+    roles: ['worker', 'customer'],
+    isWorker: true,
+    isCustomer: true,
+    verification: { emailVerified: true, phoneVerified: true, identityVerified: true, adminApproved: true },
+    profile: {
+      title: 'Deep Cleaning Specialist',
+      skills: ['cleaning', 'deep clean', 'kitchen', 'sofa', 'bathroom'],
+      experienceYears: 3,
+      hourlyRate: 350,
+      languages: ['hi', 'mr'],
+      bio: 'Providing sparkling clean homes. Specialized in deep cleaning for festivals and moving-in/out.',
+      location: { type: 'Point', coordinates: [72.8777, 19.076], radiusKm: 15 }, // Mumbai
+      availability: { days: ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'], hours: { start: '07:00', end: '16:00' } },
+      toolsOwned: ['vacuum cleaner', 'mop', 'cleaning solutions'],
       certifications: []
     }
   }
 ];
 
-const customerData = {
-  name: 'Test Customer',
-  email: 'customer@example.com',
-  phone: '+910000000010',
-  password: 'Password123',
-  roles: ['customer'],
-  isWorker: false,
-  isCustomer: true
-};
-
-const jobTemplates = [
+const customerData = [
   {
-    title: 'Fix kitchen sink leak',
-    category: 'plumbing',
-    description: 'Leak under the sink, needs sealing and pipe check.',
-    skillsRequired: ['plumbing', 'leak repair'],
-    tasks: ['Inspect leak', 'Replace washer', 'Seal joints'],
-    hoursEstimate: 2,
-    budget: { currency: 'INR', min: 700, max: 1500 },
-    toolsRequired: ['wrench', 'sealant'],
-    urgency: 'high',
-    location: { type: 'Point', coordinates: [72.878, 19.08] },
-    assignedWorkerSkill: 'plumbing'
+    name: 'Rahul Customer',
+    email: 'rahul.customer@example.com',
+    phone: '+919999999901',
+    passwordHash: HASHED_PASSWORD_123456,
+    roles: ['customer'],
+    isWorker: false,
+    isCustomer: true,
+    verification: { emailVerified: true, phoneVerified: true }
   },
   {
-    title: 'Install ceiling fan and wiring check',
-    category: 'electrical',
-    description: 'Replace old fan and verify wiring safety.',
-    skillsRequired: ['electrical', 'wiring'],
-    tasks: ['Remove old fan', 'Install new fan', 'Check connections'],
-    hoursEstimate: 3,
-    budget: { currency: 'INR', min: 1200, max: 2500 },
-    toolsRequired: ['multimeter', 'screwdriver'],
-    urgency: 'medium',
-    location: { type: 'Point', coordinates: [77.6, 12.97] },
-    assignedWorkerSkill: 'electrical'
+    name: 'Sneha Customer',
+    email: 'sneha.customer@example.com',
+    phone: '+919999999902',
+    passwordHash: HASHED_PASSWORD_123456,
+    roles: ['customer'],
+    isWorker: false,
+    isCustomer: true,
+    verification: { emailVerified: true, phoneVerified: true }
   },
   {
-    title: 'Repair wardrobe hinge and repaint door',
-    category: 'carpentry',
-    description: 'Wardrobe door sagging; fix hinge and repaint.',
-    skillsRequired: ['carpentry', 'painting'],
-    tasks: ['Fix hinge', 'Sand surface', 'Apply paint'],
-    hoursEstimate: 4,
-    budget: { currency: 'INR', min: 1500, max: 3000 },
-    toolsRequired: ['drill', 'paint roller'],
-    urgency: 'medium',
-    location: { type: 'Point', coordinates: [77.1, 28.7] },
-    assignedWorkerSkill: 'carpentry'
+    name: 'Vikram Customer',
+    email: 'vikram.customer@example.com',
+    phone: '+919999999903',
+    passwordHash: HASHED_PASSWORD_123456,
+    roles: ['customer'],
+    isWorker: false,
+    isCustomer: true,
+    verification: { emailVerified: true, phoneVerified: false }
   }
 ];
 
-async function run() {
-  await mongoose.connect(MONGO_URI);
-  console.log('Connected to Mongo');
+// --- Main Seed Function ---
 
-  const emails = [customerData.email, ...workersData.map(w => w.email)];
+const seedDatabase = async () => {
+  try {
+    await mongoose.connect(MONGO_URI);
+    console.log('Connected to MongoDB for Seeding...');
 
-  // Remove only prior seeded jobs (matched by title + seed customer) to avoid wiping user-created data
-  const existingUsers = await User.find({ email: { $in: emails } });
-  const sampleTitles = jobTemplates.map(j => j.title);
-  const seedCustomer = existingUsers.find(u => u.email === customerData.email);
-  if (seedCustomer) {
-    const sampleJobs = await Job.find({ customer: seedCustomer._id, title: { $in: sampleTitles } }).select('_id');
-    const sampleJobIds = sampleJobs.map(j => j._id);
-    if (sampleJobIds.length) {
-      await Task.deleteMany({ job: { $in: sampleJobIds } });
-      await Job.deleteMany({ _id: { $in: sampleJobIds } });
-    }
-  }
+    // 1. Clear Database
+    console.log('Clearing existing data...');
+    await Promise.all([
+      User.deleteMany({}),
+      WorkerProfile.deleteMany({}),
+      Job.deleteMany({}),
+      Task.deleteMany({}),
+      Rating.deleteMany({}),
+      Payment.deleteMany({})
+    ]);
 
-  // Upsert customer
-  let customer = await User.findOne({ email: customerData.email });
-  if (!customer) {
-    customer = new User({
-      name: customerData.name,
-      email: customerData.email,
-      phone: customerData.phone,
-      passwordHash: customerData.password,
-      roles: customerData.roles,
-      isWorker: customerData.isWorker,
-      isCustomer: customerData.isCustomer,
-      verification: { emailVerified: true }
-    });
-  } else {
-    customer.name = customerData.name;
-    customer.phone = customerData.phone;
-    customer.roles = customerData.roles;
-    customer.isWorker = customerData.isWorker;
-    customer.isCustomer = customerData.isCustomer;
-    customer.passwordHash = customerData.password; // will hash on save
-    customer.verification = { ...customer.verification, emailVerified: true };
-  }
-  await customer.save();
+    // 2. Create Customers
+    console.log('Creating Customers...');
+    const createdCustomers = await User.insertMany(customerData);
+    const customersMap = {}; // email -> userObject
+    createdCustomers.forEach(c => customersMap[c.email] = c);
 
-  // Upsert workers and profiles
-  const workers = [];
-  for (const w of workersData) {
-    let user = await User.findOne({ email: w.email });
-    if (!user) {
-      user = new User({
-        name: w.name,
-        email: w.email,
-        phone: w.phone,
-        passwordHash: w.password,
-        roles: w.roles,
-        isWorker: w.isWorker,
-        isCustomer: w.isCustomer,
-        verification: { emailVerified: true, adminApproved: true }
+    // 3. Create Workers & Profiles
+    console.log('Creating Workers & Profiles...');
+    const createdWorkers = [];
+    
+    for (const wData of workersData) {
+      const { profile, ...userData } = wData;
+      // Create User
+      const user = await User.create(userData);
+      createdWorkers.push(user);
+      
+      // Create Profile
+      await WorkerProfile.create({
+        user: user._id,
+        ...profile,
+        completedJobs: 0, // Will update statistically later
+        ratingStats: { average: 5.0, count: 0 } // Start fresh
       });
-    } else {
-      user.name = w.name;
-      user.phone = w.phone;
-      user.roles = w.roles;
-      user.isWorker = w.isWorker;
-      user.isCustomer = w.isCustomer;
-      user.passwordHash = w.password;
-      user.verification = { ...user.verification, emailVerified: true, adminApproved: true };
+      user.workerProfile = profile; // Attach for reference later in script
     }
-    await user.save();
 
-    const profile = await WorkerProfile.findOneAndUpdate(
-      { user: user._id },
-      { user: user._id, ...w.profile },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-    workers.push({ user, profile });
-  }
+    // 4. Create Jobs & Scenarios
+    console.log('Creating Jobs & Scenarios...');
 
-  // Create sample jobs
-  const jobs = [];
-  for (const jt of jobTemplates) {
-    const worker = workers.find(w => w.profile.skills.includes(jt.assignedWorkerSkill));
-    const assignedWorkerId = worker ? worker.user._id : undefined;
-    const job = await Job.create({
-      customer: customer._id,
-      title: jt.title,
-      category: jt.category,
-      description: jt.description,
-      skillsRequired: jt.skillsRequired,
-      tasks: jt.tasks,
-      hoursEstimate: jt.hoursEstimate,
-      budget: jt.budget,
-      toolsRequired: jt.toolsRequired,
-      urgency: jt.urgency,
-      location: jt.location,
-      status: assignedWorkerId ? 'assigned' : 'open',
-      assignedWorkers: assignedWorkerId ? [assignedWorkerId] : []
+    // Scenario A: Open Job (Plumbing in Mumbai)
+    await Job.create({
+      customer: customersMap['rahul.customer@example.com']._id,
+      title: 'Fix Kitchen Sink Leak',
+      category: 'plumbing',
+      description: 'The kitchen sink pipe is leaking water continuously. Need someone to fix it ASAP.',
+      skillsRequired: ['plumbing', 'leak repair'],
+      location: { type: 'Point', coordinates: [72.8777, 19.076] },
+      budget: { min: 400, max: 800, currency: 'INR' },
+      urgency: 'high',
+      status: 'open',
+      hoursEstimate: 2,
+      postedAt: new Date()
     });
 
-    if (assignedWorkerId) {
+    // Scenario B: Completed Job with Rating (Raj Plumber by Sneha)
+    const completedJobWorker = createdWorkers.find(w => w.name === 'Raj Plumber');
+    const completedJobCustomer = customersMap['sneha.customer@example.com'];
+    
+    if (completedJobWorker) {
+       const job = await Job.create({
+        customer: completedJobCustomer._id,
+        title: 'Bathroom Tap Replacement',
+        category: 'plumbing',
+        description: 'Replace two old taps in the master bathroom.',
+        skillsRequired: ['plumbing', 'bathroom'],
+        location: { type: 'Point', coordinates: [72.88, 19.08] },
+        budget: { min: 300, max: 600, currency: 'INR' },
+        urgency: 'medium',
+        status: 'completed',
+        hoursEstimate: 1,
+        assignedWorkers: [completedJobWorker._id],
+        startOtp: '1234',
+        completionProof: {
+           imageUrls: [
+             'https://placehold.co/600x400?text=Tap+Fixed+1',
+             'https://placehold.co/600x400?text=Tap+Fixed+2',
+             'https://placehold.co/600x400?text=Old+Tap'
+           ]
+        }
+      });
+
+      // Task
       await Task.create({
         job: job._id,
-        worker: assignedWorkerId,
-        role: jt.category,
-        status: 'pending',
-        payout: jt.budget.max
+        worker: completedJobWorker._id,
+        role: 'plumber',
+        status: 'completed',
+        payout: 500
       });
+
+      // Rating
+      await Rating.create({
+        job: job._id,
+        worker: completedJobWorker._id,
+        customer: completedJobCustomer._id,
+        punctuality: 5,
+        quality: 5,
+        professionalism: 4,
+        overall: 4.6,
+        review: 'Raj did a great job. He was on time and the taps are working perfectly now.'
+      });
+
+      // Update Worker Stats manually (since we are seeding directly)
+      await WorkerProfile.updateOne(
+        { user: completedJobWorker._id }, 
+        { 
+          $inc: { completedJobs: 1, 'ratingStats.count': 1 },
+          $set: { 'ratingStats.average': 4.6 } 
+        }
+      );
+      await User.updateOne({ _id: completedJobWorker._id }, { $set: { 'ratingStats.average': 4.6, 'ratingStats.count': 1 } });
     }
 
-    jobs.push(job);
+    // Scenario C: En Route Job (Priya Electrician for Rahul)
+    const enRouteWorker = createdWorkers.find(w => w.name === 'Priya Electrician');
+    if (enRouteWorker) {
+      await Job.create({
+        customer: customersMap['rahul.customer@example.com']._id,
+        title: 'Install Ceiling Fan',
+        category: 'electrical',
+        description: 'New ceiling fan installation in the living room. Fan is already purchased.',
+        skillsRequired: ['electrical', 'fan install'],
+        location: { type: 'Point', coordinates: [77.5946, 12.9716] },
+        budget: { min: 300, max: 500, currency: 'INR' },
+        urgency: 'medium',
+        status: 'en_route',
+        hoursEstimate: 1,
+        assignedWorkers: [enRouteWorker._id],
+        startOtp: '5678'
+      });
+      // Mark worker busy
+      await WorkerProfile.updateOne({ user: enRouteWorker._id }, { isAvailable: false });
+    }
+
+    // Scenario D: In Progress Job (Aman Carpenter for Vikram)
+    const inProgressWorker = createdWorkers.find(w => w.name === 'Aman Carpenter');
+    if (inProgressWorker) {
+      await Job.create({
+        customer: customersMap['vikram.customer@example.com']._id,
+        title: 'Repair Wardrobe Door',
+        category: 'carpentry',
+        description: 'The wardrobe door hinge is broken and needs replacement.',
+        skillsRequired: ['carpentry', 'furniture repair'],
+        location: { type: 'Point', coordinates: [77.1025, 28.7041] },
+        budget: { min: 500, max: 1000, currency: 'INR' },
+        urgency: 'low',
+        status: 'in_progress',
+        hoursEstimate: 3,
+        assignedWorkers: [inProgressWorker._id],
+        startOtp: '9012'
+      });
+      // Mark worker busy
+      await WorkerProfile.updateOne({ user: inProgressWorker._id }, { isAvailable: false });
+    }
+
+     // Scenario E: Another Completed Job for Raj (to show multiple reviews)
+    if (completedJobWorker) {
+       const job2 = await Job.create({
+        customer: customersMap['vikram.customer@example.com']._id,
+        title: 'Fix Balcony Drain',
+        category: 'plumbing',
+        description: 'Water clogging in balcony drain.',
+        skillsRequired: ['plumbing'],
+        location: { type: 'Point', coordinates: [72.88, 19.08] },
+        budget: { min: 400, max: 600, currency: 'INR' },
+        status: 'completed',
+        assignedWorkers: [completedJobWorker._id],
+        completionProof: { imageUrls: ['https://placehold.co/600x400'] }
+      });
+
+      await Rating.create({
+        job: job2._id,
+        worker: completedJobWorker._id,
+        customer: customersMap['vikram.customer@example.com']._id,
+        punctuality: 4,
+        quality: 5,
+        professionalism: 5,
+        overall: 4.8,
+        review: 'Very professional behavior. Fixed the issue quickly.'
+      });
+
+      // Update avg (approximate for seed)
+      await WorkerProfile.updateOne(
+        { user: completedJobWorker._id }, 
+        { 
+          $inc: { completedJobs: 1, 'ratingStats.count': 1 },
+          $set: { 'ratingStats.average': 4.7 } 
+        }
+      );
+      await User.updateOne({ _id: completedJobWorker._id }, { $set: { 'ratingStats.average': 4.7, 'ratingStats.count': 2 } });
+    }
+
+    console.log('Seeding Completed Successfully!');
+    process.exit(0);
+  } catch (error) {
+    console.error('Seeding Failed:', error);
+    process.exit(1);
   }
+};
 
-  console.log(`Seeded: ${workers.length} workers, 1 customer, ${jobs.length} jobs.`);
-  await mongoose.disconnect();
-  console.log('Done.');
-}
+seedDatabase();
 
-run().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
