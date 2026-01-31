@@ -500,14 +500,24 @@ export default function JobDetail() {
                 <dt className="text-sm font-medium text-gray-500">Estimated Hours</dt>
                 <dd className="mt-1 text-sm text-gray-900 flex items-center">
                   <Clock className="w-4 h-4 mr-1 text-gray-400" />
-                  {job.hoursEstimate} hours
+                  {job.hoursEstimate ? `${job.hoursEstimate} hours` : 'Not specified'}
                 </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Location</dt>
-                <dd className="mt-1 text-sm text-gray-900 flex items-center">
-                  <MapPin className="w-4 h-4 mr-1 text-gray-400" />
-                  Coordinates: {job.location?.coordinates?.join(', ')}
+                <dd className="mt-1 text-sm text-gray-900 flex flex-col">
+                  {job.location?.coordinates && (
+                     <div className="flex items-center">
+                       <MapPin className="w-4 h-4 mr-1 text-gray-400" />
+                       <span className="truncate">
+                        {job.location.coordinates[1].toFixed(4)}, {job.location.coordinates[0].toFixed(4)}
+                       </span>
+                     </div>
+                  )}
+                  {/* Fallback if address is missing */}
+                  <span className="text-xs text-gray-500 ml-5">
+                    (Click map to view precise location)
+                  </span>
                 </dd>
               </div>
             </dl>
