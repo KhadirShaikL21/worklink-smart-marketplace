@@ -35,6 +35,8 @@ export async function listWorkers(req, res) {
     rating: p.ratingStats?.average || 4,
     ratingCount: p.ratingStats?.count || 0,
     completedJobs: p.completedJobs || 0,
+    isAvailable: p.isAvailable,
+    bio: p.bio,
     location: p.location,
     portfolio: p.portfolio || [],
     profileId: p._id

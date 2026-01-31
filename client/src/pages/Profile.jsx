@@ -197,6 +197,11 @@ export default function Profile() {
               <p className="text-gray-500 flex items-center gap-2">
                 {user.roles?.includes('worker') ? 'Skilled Worker' : 'Customer'}
                 {user.workerProfile?.title && ` • ${user.workerProfile.title}`}
+                {user.roles?.includes('worker') && (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ml-2 ${user.workerProfile?.isAvailable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {user.workerProfile?.isAvailable ? 'Available' : 'Busy'}
+                  </span>
+                )}
               </p>
             </div>
             {isOwnProfile && !isEditing && (

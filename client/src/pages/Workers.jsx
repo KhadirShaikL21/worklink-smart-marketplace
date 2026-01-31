@@ -180,9 +180,9 @@ export default function Workers() {
                 </div>
                 
                 <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-between items-center">
-                  <span className="text-xs text-gray-500 flex items-center">
-                    <MapPin className="w-3 h-3 mr-1" />
-                    Available now
+                  <span className={`text-xs font-medium flex items-center ${worker.isAvailable ? 'text-green-600' : 'text-red-500'}`}>
+                    <span className={`w-2 h-2 rounded-full mr-2 ${worker.isAvailable ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                    {worker.isAvailable ? 'Available Now' : 'Busy / On Job'}
                   </span>
                   <Link 
                     to={`/profile/${worker.id}`}

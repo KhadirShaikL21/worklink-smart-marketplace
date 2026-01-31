@@ -392,6 +392,15 @@ export async function completeJob(req, res) {
   };
   await job.save();
 
+  // Set workers back to available
+  if (job.assignedWorkers && job.assignedWorkers.length > 0) {
+    const workerIds = job.assignedWorkers.map(w => w._id || w);
+    await WorkerProfile.updateMany(
+      { user: { $in: workerIds } },
+      { $set: { isAvailable: true } }
+    );
+  }
+
   // Notify Customer
   await notify({
     userId: job.customer._id,
