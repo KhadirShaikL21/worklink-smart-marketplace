@@ -36,6 +36,23 @@ export function initRealtime(httpServer) {
       s.delete(socket.id);
       if (s.size === 0) userSockets.delete(socket.userId);
     });
+
+    // Job Tracking Events
+    socket.on('join_job', (jobId) => {
+      socket.join(`job:${jobId}`);
+    });
+
+    socket.on('leave_job', (jobId) => {
+      socket.leave(`job:${jobId}`);
+    });
+
+    socket.on('update_location', ({ jobId, location }) => {
+      // Broadcast to everyone else in the job room (e.g. customer)
+      socket.to(`job:${jobId}`).emit('worker_location', {
+        workerId: socket.userId,
+        location
+      });
+    });
   });
 
   return io;
