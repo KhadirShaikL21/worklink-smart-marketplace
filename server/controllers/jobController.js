@@ -6,6 +6,7 @@ import ChatRoom from '../models/ChatRoom.js';
 import { notify } from '../services/notifications.js';
 
 import WorkerProfile from '../models/WorkerProfile.js';
+import Payment from '../models/Payment.js';
 
 export async function createJob(req, res) {
   const {
@@ -237,6 +238,11 @@ export async function assignWorkers(req, res) {
     job.startOtp = Math.floor(1000 + Math.random() * 9000).toString();
   }
 
+  if (tasks.length > 0) {
+    job.timeline = job.timeline || {};
+    job.timeline.assignedAt = new Date();
+  }
+
   await job.save();
 
   // Update worker availability
@@ -310,6 +316,8 @@ export async function startTravel(req, res) {
   }
 
   job.status = 'en_route';
+  job.timeline = job.timeline || {};
+  job.timeline.travelStartedAt = new Date();
   await job.save();
 
   // Notify Customer
@@ -346,6 +354,16 @@ export async function verifyStartOtp(req, res) {
   }
 
   job.status = 'in_progress';
+  job.timeline = job.timeline || {};
+  if (!job.timeline.startedAt) {
+    const now = new Date();
+    job.timeline.startedAt = now;
+    if (job.timeline.travelStartedAt) {
+      const travelDurationMinutes = Math.max(0, Math.round((now.getTime() - job.timeline.travelStartedAt.getTime()) / 60000));
+      job.summary = job.summary || {};
+      job.summary.travelDurationMinutes = travelDurationMinutes;
+    }
+  }
   await job.save();
 
   // Notify Customer
@@ -373,6 +391,22 @@ export async function getJob(req, res) {
     delete jobData.startOtp;
   }
 
+  const payment = await Payment.findOne({ job: jobId }).sort({ createdAt: -1 }).lean();
+  if (payment) {
+    jobData.payment = {
+      total: payment.total,
+      currency: payment.currency,
+      status: payment.status,
+      platformFeePct: payment.platformFeePct,
+      updatedAt: payment.updatedAt,
+      payees: (payment.payees || []).map(p => ({
+        worker: p.worker,
+        amount: p.amount,
+        status: p.status
+      }))
+    };
+  }
+
   return res.json({ job: jobData });
 }
 
@@ -397,6 +431,25 @@ export async function completeJob(req, res) {
 
   if (!imageUrls || imageUrls.length < 3) {
     return res.status(400).json({ message: 'Proof of work required: at least 3 photos.' });
+  }
+
+  const now = new Date();
+  job.timeline = job.timeline || {};
+  job.timeline.completedAt = now;
+  job.summary = job.summary || {};
+
+  const startedAt = job.timeline.startedAt;
+  if (startedAt) {
+    const workDurationMinutes = Math.max(0, Math.round((now.getTime() - startedAt.getTime()) / 60000));
+    job.summary.workDurationMinutes = workDurationMinutes;
+  }
+  if (!job.summary.travelDurationMinutes && job.timeline.travelStartedAt && startedAt) {
+    const travelDurationMinutes = Math.max(0, Math.round((startedAt.getTime() - job.timeline.travelStartedAt.getTime()) / 60000));
+    job.summary.travelDurationMinutes = travelDurationMinutes;
+  }
+  const durations = [job.summary.travelDurationMinutes, job.summary.workDurationMinutes].filter(v => typeof v === 'number');
+  if (durations.length) {
+    job.summary.totalDurationMinutes = durations.reduce((acc, curr) => acc + curr, 0);
   }
 
   job.status = 'completed';

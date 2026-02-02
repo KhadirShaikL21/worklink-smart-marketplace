@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Calendar, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Star, Briefcase, Lock, Upload, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare } from 'lucide-react';
+import { MapPin, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Briefcase, Lock, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare } from 'lucide-react';
 import PaymentModal from '../components/PaymentModal';
 import JobTrackingMap from '../components/JobTrackingMap';
 import { JobDetailSkeleton } from '../components/ui/Skeleton.jsx';
@@ -19,8 +19,6 @@ export default function JobDetail() {
   const [otp, setOtp] = useState('');
   const [starting, setStarting] = useState(false);
   
-  // Completion states
-  const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [videoFile, setVideoFile] = useState(null);
   const [photoFiles, setPhotoFiles] = useState([null, null, null]);
   const [uploading, setUploading] = useState(false);
@@ -29,18 +27,37 @@ export default function JobDetail() {
   const [clientSecret, setClientSecret] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
+  const formatDateTime = value => {
+    if (!value) return '—';
+    return new Date(value).toLocaleString();
+  };
+
+  const formatDuration = minutes => {
+    if (minutes === undefined || minutes === null) return '—';
+    const totalMinutes = Math.max(0, minutes);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (hours && mins) return `${hours}h ${mins}m`;
+    if (hours) return `${hours}h`;
+    return `${mins}m`;
+  };
+
   const load = async () => {
     try {
       const res = await api.get(`/api/jobs/${jobId}`);
       setJob(res.data.job);
-      
-      // Load Chat Room
+      setChatRoomId(null);
+
+      // Load Chat Room once job is beyond open state
       if (res.data.job.status !== 'open') {
         try {
-          // Attempt to find the chat room for this job
           const roomRes = await api.get('/api/chat/rooms');
-          const jobRoom = roomRes.data.rooms.find(r => r.job?._id === jobId || r.job === jobId);
-          if (jobRoom) setChatRoomId(jobRoom._id);
+          const jobIdStr = jobId.toString();
+          const jobRoom = (roomRes.data.rooms || []).find(r => {
+            const roomJobId = r.job?._id || r.job;
+            return roomJobId && roomJobId.toString() === jobIdStr;
+          });
+          setChatRoomId(jobRoom?._id || null);
         } catch (e) {
           console.error('Failed to load chat room', e);
         }
@@ -166,6 +183,53 @@ export default function JobDetail() {
 
   if (!job) return <JobDetailSkeleton />;
 
+  const isCompleted = job.status === 'completed';
+  const assignedWorkers = job.assignedWorkers || [];
+  const assignedWorkerIds = assignedWorkers.map(w => (w._id || w).toString());
+  const currentUserId = user?._id?.toString();
+  const customerId = (job.customer?._id || job.customer)?.toString();
+  const isCustomer = customerId === currentUserId;
+  const isAssignedWorker = assignedWorkerIds.includes(currentUserId || '');
+  const jobRole = isCustomer ? 'customer' : 'worker';
+  const timeline = job.timeline || {};
+  const summary = job.summary || {};
+  const payment = job.payment;
+  const completionProof = job.completionProof || {};
+  const toDate = value => (value ? new Date(value) : null);
+  const assignedAtDate = toDate(timeline.assignedAt) || (job.status !== 'open' ? toDate(job.createdAt) : null);
+  const completedAtDate = toDate(timeline.completedAt) || (job.status === 'completed' ? toDate(job.updatedAt) : null);
+  const inferredStartedFromWork = completedAtDate && typeof summary.workDurationMinutes === 'number'
+    ? new Date(completedAtDate.getTime() - summary.workDurationMinutes * 60000)
+    : null;
+  const startedAtDate = toDate(timeline.startedAt)
+    || inferredStartedFromWork
+    || ((job.status === 'in_progress' || job.status === 'completed') ? toDate(job.updatedAt) : null);
+  const inferredTravelFromSummary = startedAtDate && typeof summary.travelDurationMinutes === 'number'
+    ? new Date(startedAtDate.getTime() - summary.travelDurationMinutes * 60000)
+    : null;
+  const travelStartedAtDate = toDate(timeline.travelStartedAt) || inferredTravelFromSummary;
+  const travelDurationMinutes = typeof summary.travelDurationMinutes === 'number'
+    ? summary.travelDurationMinutes
+    : (travelStartedAtDate && startedAtDate
+        ? Math.max(0, Math.round((startedAtDate.getTime() - travelStartedAtDate.getTime()) / 60000))
+        : null);
+  const workDurationMinutes = typeof summary.workDurationMinutes === 'number'
+    ? summary.workDurationMinutes
+    : (startedAtDate && completedAtDate
+        ? Math.max(0, Math.round((completedAtDate.getTime() - startedAtDate.getTime()) / 60000))
+        : null);
+  const totalDurationMinutes = typeof summary.totalDurationMinutes === 'number'
+    ? summary.totalDurationMinutes
+    : [travelDurationMinutes, workDurationMinutes].reduce((acc, minutes) => {
+        if (typeof minutes !== 'number') return acc;
+        return (acc ?? 0) + minutes;
+      }, null);
+  const workerNameFor = workerId => {
+    const id = workerId?.toString();
+    const match = assignedWorkers.find(w => (w._id || w).toString() === id);
+    return match?.name || 'Worker';
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PaymentModal 
@@ -174,6 +238,17 @@ export default function JobDetail() {
         clientSecret={clientSecret} 
         onSuccess={handlePaymentSuccess}
       />
+
+      {statusMsg && (
+        <div className="mb-4 p-4 rounded-md bg-green-50 border border-green-200">
+          <p className="text-sm text-green-800">{statusMsg}</p>
+        </div>
+      )}
+      {error && (
+        <div className="mb-4 p-4 rounded-md bg-red-50 border border-red-200">
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
@@ -187,11 +262,15 @@ export default function JobDetail() {
                     <Briefcase className="w-4 h-4 mr-1" />
                     {job.category}
                   </span>
-                  <span className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    job.urgency === 'emergency' ? 'bg-red-100 text-red-800' :
-                    job.urgency === 'high' ? 'bg-orange-100 text-orange-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
+                  <span
+                    className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      job.urgency === 'emergency'
+                        ? 'bg-red-100 text-red-800'
+                        : job.urgency === 'high'
+                          ? 'bg-orange-100 text-orange-800'
+                          : 'bg-blue-100 text-blue-800'
+                    }`}
+                  >
                     {job.urgency.charAt(0).toUpperCase() + job.urgency.slice(1)}
                   </span>
                   <span className="flex items-center">
@@ -211,9 +290,9 @@ export default function JobDetail() {
               <div className="mt-6">
                 <h3 className="text-lg font-medium text-gray-900">Problem Video</h3>
                 <div className="mt-2 rounded-lg overflow-hidden bg-black aspect-video">
-                  <video 
-                    src={job.media.problemVideoUrl} 
-                    controls 
+                  <video
+                    src={job.media.problemVideoUrl}
+                    controls
                     className="w-full h-full"
                   />
                 </div>
@@ -224,64 +303,165 @@ export default function JobDetail() {
               <h3 className="text-lg font-medium text-gray-900">Required Skills</h3>
               <div className="mt-2 flex flex-wrap gap-2">
                 {(job.skillsRequired || []).map((skill, idx) => (
-                  <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                  <span
+                    key={idx}
+                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
+                  >
                     {skill}
                   </span>
                 ))}
+                {(job.skillsRequired || []).length === 0 && (
+                  <span className="text-sm text-gray-500">No specific skills listed.</span>
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Map & Tracking Section */}
-            {(job.status === 'assigned' || job.status === 'en_route' || job.status === 'in_progress') && (
-              <div className="mt-8 border-t border-gray-100 pt-6">
-                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                      <MapPin className="w-5 h-5 mr-2 text-primary-600" />
-                      Live Location Tracking
-                    </h3>
-                    {/* Worker Action: Start Travel */}
-                    {job.assignedWorkers?.some(w => (w._id || w) === user?._id) && job.status === 'assigned' && (
-                      <button
-                        onClick={startTravel}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <Navigation className="w-4 h-4 mr-2" />
-                        Start Travel
-                      </button>
-                    )}
-                     {job.status === 'en_route' && (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 animate-pulse">
-                          Worker En Route
-                        </span>
-                     )}
-                 </div>
-               /* Chat Button */}
-              {chatRoomId && (
+          {!isCompleted && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900 flex items-center">
+                  <MapPin className="w-5 h-5 mr-2 text-primary-600" />
+                  Live Location Tracking
+                </h3>
+                {isAssignedWorker && job.status === 'assigned' && (
+                  <button
+                    onClick={startTravel}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    <Navigation className="w-4 h-4 mr-2" />
+                    Start Travel
+                  </button>
+                )}
+                {job.status === 'en_route' && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 animate-pulse">
+                    Worker En Route
+                  </span>
+                )}
+              </div>
+              <JobTrackingMap job={job} userRole={jobRole} />
+            </div>
+          )}
+
+          {(isCompleted || travelStartedAtDate || startedAtDate || completedAtDate) && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Completion Overview</h3>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="font-medium text-gray-500">Assigned</dt>
+                  <dd className="mt-1 text-gray-900">{formatDateTime(assignedAtDate)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-gray-500">Travel Started</dt>
+                  <dd className="mt-1 text-gray-900">{formatDateTime(travelStartedAtDate)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-gray-500">Work Started</dt>
+                  <dd className="mt-1 text-gray-900">{formatDateTime(startedAtDate)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-gray-500">Completed</dt>
+                  <dd className="mt-1 text-gray-900">{formatDateTime(completedAtDate)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-gray-500">Travel Duration</dt>
+                  <dd className="mt-1 text-gray-900">{formatDuration(travelDurationMinutes)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-gray-500">Work Duration</dt>
+                  <dd className="mt-1 text-gray-900">{formatDuration(workDurationMinutes)}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-gray-500">Total Time</dt>
+                  <dd className="mt-1 text-gray-900">{formatDuration(totalDurationMinutes)}</dd>
+                </div>
+              </dl>
+            </div>
+          )}
+
+          {isCompleted && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Proof of Work</h3>
+              {completionProof.videoUrl ? (
+                <div className="mb-6 aspect-video bg-black rounded-lg overflow-hidden">
+                  <video src={completionProof.videoUrl} controls className="w-full h-full" />
+                </div>
+              ) : null}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {(completionProof.imageUrls || []).map((url, idx) => (
+                  <div key={idx} className="relative h-32 rounded-lg overflow-hidden border border-gray-200">
+                    <img src={url} alt={`Proof ${idx + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+                {(!completionProof.imageUrls || completionProof.imageUrls.length === 0) && (
+                  <p className="text-sm text-gray-500">No proof images uploaded.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {isCompleted && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Financial Summary</h3>
+              {payment ? (
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <dt className="font-medium text-gray-500">Total Payment</dt>
+                    <dd className="mt-1 text-gray-900 flex items-center gap-2">
+                      <IndianRupee className="w-4 h-4 text-gray-400" />
+                      {payment.total} {payment.currency}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-gray-500">Payment Status</dt>
+                    <dd className="mt-1 text-gray-900 capitalize">{payment.status ? payment.status.replace(/_/g, ' ') : 'Unknown'}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-gray-500">Updated</dt>
+                    <dd className="mt-1 text-gray-900">{formatDateTime(payment.updatedAt)}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-gray-500">Platform Fee</dt>
+                    <dd className="mt-1 text-gray-900">{payment.platformFeePct ?? '—'}%</dd>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <dt className="font-medium text-gray-500 mb-2">Payees</dt>
+                    <ul className="space-y-2">
+                      {(payment.payees || []).map((p, idx) => (
+                        <li key={idx} className="flex justify-between text-gray-700 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                          <span>{workerNameFor(p.worker)} {p.status ? `(${p.status.replace(/_/g, ' ')})` : ''}</span>
+                          <span>{p.amount} {payment.currency}</span>
+                        </li>
+                      ))}
+                      {(payment.payees || []).length === 0 && (
+                        <li className="text-sm text-gray-500">No payouts recorded yet.</li>
+                      )}
+                    </ul>
+                  </div>
+                </dl>
+              ) : (
+                <p className="text-sm text-gray-600">Payment intent not created yet. Customer can initiate payment from the Actions panel.</p>
+              )}
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
+            <div className="flex flex-wrap gap-4">
+              {chatRoomId && job.status !== 'open' && (isCustomer || isAssignedWorker) && (
                 <button
                   onClick={() => navigate(`/chat?roomId=${chatRoomId}`)}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
                 >
                   <MessageSquare className="w-4 h-4 mr-2" />
-                  Open Chat
+                  Open Team Chat
                 </button>
               )}
 
-              {  <JobTrackingMap 
-                    job={job} 
-                    userRole={job.customer === user?._id ? 'customer' : 'worker'} 
-                 />
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
-            <div className="flex flex-wrap gap-4">
-              {user?._id === job.customer && (
+              {isCustomer && (
                 <>
                   {job.status === 'open' && (
-                    <button 
+                    <button
                       onClick={() => navigate(`/jobs/${jobId}/matching`)}
                       className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                     >
@@ -289,32 +469,20 @@ export default function JobDetail() {
                       Find Matches
                     </button>
                   )}
-                  
-                  <button 
+
+                  <button
                     onClick={createPayment}
                     className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                   >
                     <IndianRupee className="w-4 h-4 mr-2" />
-                    Create Payment
+                    {payment ? 'Manage Payment' : 'Create Payment'}
                   </button>
                 </>
               )}
             </div>
-
-            {statusMsg && (
-              <div className="mt-4 p-4 rounded-md bg-green-50 border border-green-200">
-                <p className="text-sm text-green-800">{statusMsg}</p>
-              </div>
-            )}
-            {error && (
-              <div className="mt-4 p-4 rounded-md bg-red-50 border border-red-200">
-                <p className="text-sm text-red-800">{error}</p>
-              </div>
-            )}
           </div>
 
-          {/* Worker Job Completion Section */}
-          {job.assignedWorkers?.some(w => (w._id || w) === user?._id) && job.status === 'in_progress' && (
+          {isAssignedWorker && job.status === 'in_progress' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
                 <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
@@ -323,24 +491,24 @@ export default function JobDetail() {
               <p className="text-sm text-gray-500 mb-4">
                 Please upload proof of work to complete this job. 3 photos are mandatory.
               </p>
-              
+
               <form onSubmit={handleCompleteJob} className="space-y-6">
-                {/* Photo Uploads */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Photo Proof (3 Required)</label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {[0, 1, 2].map(idx => (
                       <div key={idx} className="relative group">
-                        <div className={`
-                          relative border-2 border-dashed rounded-lg h-32 flex flex-col items-center justify-center transition-colors
-                          ${photoFiles[idx] ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'}
-                        `}>
+                        <div
+                          className={`relative border-2 border-dashed rounded-lg h-32 flex flex-col items-center justify-center transition-colors ${
+                            photoFiles[idx] ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
+                          }`}
+                        >
                           {photoFiles[idx] ? (
                             <>
-                              <img 
-                                src={URL.createObjectURL(photoFiles[idx])} 
-                                alt="Preview" 
-                                className="absolute inset-0 w-full h-full object-cover rounded-lg opacity-80" 
+                              <img
+                                src={URL.createObjectURL(photoFiles[idx])}
+                                alt="Preview"
+                                className="absolute inset-0 w-full h-full object-cover rounded-lg opacity-80"
                               />
                               <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg">
                                 <button
@@ -360,18 +528,18 @@ export default function JobDetail() {
                             <label htmlFor={`photo-${idx}`} className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
                               <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
                               <span className="text-xs text-gray-500 font-medium">Upload Photo {idx + 1}</span>
-                              <input 
-                                id={`photo-${idx}`} 
-                                type="file" 
-                                accept="image/*" 
-                                className="sr-only" 
+                              <input
+                                id={`photo-${idx}`}
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
                                 onChange={e => {
                                   if (e.target.files[0]) {
                                     const newFiles = [...photoFiles];
                                     newFiles[idx] = e.target.files[0];
                                     setPhotoFiles(newFiles);
                                   }
-                                }} 
+                                }}
                               />
                             </label>
                           )}
@@ -384,18 +552,19 @@ export default function JobDetail() {
                 {/* Video Upload */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Video Proof (Optional)</label>
-                  <div className={`
-                    mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-colors
-                    ${videoFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'}
-                  `}>
+                  <div
+                    className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-colors ${
+                      videoFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
+                    }`}
+                  >
                     <div className="space-y-1 text-center">
                       {videoFile ? (
                         <div className="flex items-center justify-center space-x-2">
                           <Video className="h-8 w-8 text-green-600" />
                           <div className="text-left">
                             <p className="text-sm font-medium text-gray-900 truncate max-w-xs">{videoFile.name}</p>
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => setVideoFile(null)}
                               className="text-xs text-red-600 hover:text-red-800 font-medium"
                             >
@@ -440,26 +609,25 @@ export default function JobDetail() {
             </div>
           )}
 
-          {/* Satisfaction - Only for Customer */}
-          {user?._id === job.customer && (job.status === 'assigned' || job.status === 'in_progress' || job.status === 'completed') ? (
+          {isCustomer && (job.status === 'assigned' || job.status === 'in_progress' || job.status === 'completed') && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Job Completion</h3>
               <div className="flex flex-wrap gap-3">
-                <button 
+                <button
                   onClick={() => markSatisfaction('satisfied')}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Satisfied
                 </button>
-                <button 
+                <button
                   onClick={() => markSatisfaction('not_satisfied')}
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
                 >
                   <AlertTriangle className="w-4 h-4 mr-2" />
                   Not Satisfied
                 </button>
-                <button 
+                <button
                   onClick={() => markSatisfaction('needs_fix')}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                 >
@@ -467,7 +635,7 @@ export default function JobDetail() {
                 </button>
               </div>
             </div>
-          ) : null}
+          )}
         </div>
 
         {/* Sidebar */}
@@ -480,14 +648,14 @@ export default function JobDetail() {
                 Start Job Verification
               </h3>
               
-              {user?._id === job.customer && (
+              {isCustomer && (
                 <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
                   <p className="text-sm text-blue-800 mb-2">Share this code with the worker when they arrive:</p>
                   <div className="text-3xl font-bold text-blue-900 tracking-widest">{job.startOtp}</div>
                 </div>
               )}
 
-              {job.assignedWorkers?.some(w => (w._id || w) === user?._id) && (
+              {isAssignedWorker && (
                 <form onSubmit={startJob} className="space-y-3">
                   <p className="text-sm text-gray-600">Ask the customer for the start code:</p>
                   <input
@@ -548,13 +716,13 @@ export default function JobDetail() {
           </div>
 
           {/* Rate Worker - Only visible after completion */}
-          {job.status === 'completed' && user?._id === job.customer && (
+          {job.status === 'completed' && isCustomer && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Rate Worker</h3>
               <form onSubmit={submitRating} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Worker</label>
-                  {job.assignedWorkers && job.assignedWorkers.length > 0 ? (
+                  {assignedWorkers && assignedWorkers.length > 0 ? (
                     <select
                       value={rating.workerId}
                       onChange={e => setRating({ ...rating, workerId: e.target.value })}
@@ -562,9 +730,9 @@ export default function JobDetail() {
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                     >
                       <option value="">Select a worker</option>
-                      {job.assignedWorkers.map(w => (
-                        <option key={w._id} value={w._id}>
-                          {w.name} ({w.email})
+                      {assignedWorkers.map(w => (
+                        <option key={w._id || w} value={w._id || w}>
+                          {w.name || 'Worker'} {w.email ? `(${w.email})` : ''}
                         </option>
                       ))}
                     </select>
@@ -599,7 +767,7 @@ export default function JobDetail() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-500">Professional</label>
+                    <label className="block text-xs font-medium text-gray-500">Professionalism</label>
                     <input 
                       type="number" min="1" max="5" 
                       value={rating.professionalism} 

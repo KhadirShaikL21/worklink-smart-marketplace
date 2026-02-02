@@ -53,6 +53,17 @@ const JobSchema = new mongoose.Schema(
     matchingSnapshot: {
       weights: Object,
       rankedCandidates: [Object]
+    },
+    timeline: {
+      assignedAt: { type: Date },
+      travelStartedAt: { type: Date },
+      startedAt: { type: Date },
+      completedAt: { type: Date }
+    },
+    summary: {
+      travelDurationMinutes: { type: Number, min: 0 },
+      workDurationMinutes: { type: Number, min: 0 },
+      totalDurationMinutes: { type: Number, min: 0 }
     }
   },
   { timestamps: true }
