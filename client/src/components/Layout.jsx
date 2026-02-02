@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useNotifications } from '../context/NotificationContext.jsx';
 import AssistantWidget from './AssistantWidget.jsx';
 import { AnimatePresence } from 'framer-motion';
 import PageTransition from './ui/PageTransition.jsx';
@@ -14,6 +15,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { unreadCount } = useNotifications();
 
   const navigation = [
     { name: 'Home', href: '/', icon: Home },
@@ -81,7 +83,11 @@ export default function Layout() {
                   <div className="flex items-center space-x-2 border-r border-gray-200 pr-4">
                     <Link to="/notifications" className="p-2 text-gray-400 hover:text-primary-600 transition-colors relative">
                       <Bell className="w-5 h-5" />
-                      <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                      {unreadCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 bg-red-500 text-white rounded-full text-xs font-semibold px-1.5 py-0.5 leading-none">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
                     </Link>
                   </div>
                   

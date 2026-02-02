@@ -276,38 +276,6 @@ export async function assignWorkers(req, res) {
 
   return res.json({ job, tasks });
 }
-  const participantIds = [job.customer, ...job.assignedWorkers];
-  const room = await ChatRoom.findOneAndUpdate(
-    { job: job._id },
-    { job: job._id, participants: participantIds, type: participantIds.length > 2 ? 'group' : 'direct' },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
-
-  // Notify Customer
-  await notify({
-    userId: job.customer,
-    type: 'job_update',
-    title: 'Workers Assigned',
-    body: `${tasks.length} worker(s) assigned to your job: ${job.title}`,
-    metadata: { jobId: job._id }
-  });
-
-  // Notify Workers
-  for (const task of tasks) {
-    // Check if this is a new assignment (created now) or existing
-    // We can just notify anyway or check creation time. 
-    // For simplicity, notify all assigned in this batch.
-    await notify({
-      userId: task.worker,
-      type: 'job_assignment',
-      title: 'New Job Assignment',
-      body: `You have been assigned to job: ${job.title}`,
-      metadata: { jobId: job._id, taskId: task._id }
-    });
-  }
-
-  return res.json({ job, tasks, room });
-}
 
 export async function listMyJobs(req, res) {
   const filters = [];
