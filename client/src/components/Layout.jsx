@@ -33,7 +33,6 @@ export default function Layout() {
   ];
 
   const userNavigation = [
-    { name: 'Chat', href: '/chat', icon: MessageSquare },
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Profile', href: '/profile', icon: User },
   ];
@@ -80,9 +79,6 @@ export default function Layout() {
               {user ? (
                 <>
                   <div className="flex items-center space-x-2 border-r border-gray-200 pr-4">
-                    <Link to="/chat" className="p-2 text-gray-400 hover:text-primary-600 transition-colors relative">
-                      <MessageSquare className="w-5 h-5" />
-                    </Link>
                     <Link to="/notifications" className="p-2 text-gray-400 hover:text-primary-600 transition-colors relative">
                       <Bell className="w-5 h-5" />
                       <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>

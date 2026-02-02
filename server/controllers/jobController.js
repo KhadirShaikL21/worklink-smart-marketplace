@@ -169,6 +169,24 @@ export async function formTeamOptimized(req, res) {
           metadata: { jobId: job._id, taskId: task._id }
         });
       }
+
+      // Create or Update Chat Room for the Job
+      const allWorkerIds = tasks.map(t => t.worker.toString());
+      const participants = [...new Set([job.customer.toString(), ...allWorkerIds])];
+      
+      let chatRoom = await ChatRoom.findOne({ job: job._id });
+      if (chatRoom) {
+        // Update participants if room exists
+        chatRoom.participants = participants;
+        await chatRoom.save();
+      } else {
+        // Create new room
+        chatRoom = await ChatRoom.create({
+          job: job._id,
+          participants: participants,
+          type: 'group' // Always group for job context
+        });
+      }
     }
 
     return res.json(result);
@@ -229,7 +247,35 @@ export async function assignWorkers(req, res) {
     );
   }
 
-  // Create or update chat room for this job
+  // Create or Update Chat Room for the Job
+  const allWorkers = job.assignedWorkers.map(w => w.toString());
+  const participants = [...new Set([job.customer.toString(), ...allWorkers])];
+  
+  let chatRoom = await ChatRoom.findOne({ job: job._id });
+  if (chatRoom) {
+    chatRoom.participants = participants;
+    await chatRoom.save();
+  } else {
+    await ChatRoom.create({
+      job: job._id,
+      participants: participants,
+      type: 'group'
+    });
+  }
+
+  // Notify Workers
+  for (const task of tasks) {
+    await notify({
+      userId: task.worker,
+      type: 'job_assignment',
+      title: 'New Job Assigned',
+      body: `You have been assigned to job: ${job.title}`,
+      metadata: { jobId: job._id }
+    });
+  }
+
+  return res.json({ job, tasks });
+}
   const participantIds = [job.customer, ...job.assignedWorkers];
   const room = await ChatRoom.findOneAndUpdate(
     { job: job._id },

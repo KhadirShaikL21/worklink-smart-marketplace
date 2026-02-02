@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Calendar, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Star, Briefcase, Lock, Upload, Video, Image as ImageIcon, Loader2, Navigation } from 'lucide-react';
+import { MapPin, Calendar, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Star, Briefcase, Lock, Upload, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare } from 'lucide-react';
 import PaymentModal from '../components/PaymentModal';
 import JobTrackingMap from '../components/JobTrackingMap';
 import { JobDetailSkeleton } from '../components/ui/Skeleton.jsx';
@@ -12,6 +12,7 @@ export default function JobDetail() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
+  const [chatRoomId, setChatRoomId] = useState(null);
   const [statusMsg, setStatusMsg] = useState('');
   const [error, setError] = useState('');
   const [rating, setRating] = useState({ punctuality: 5, quality: 5, professionalism: 5, review: '', workerId: '' });
@@ -32,6 +33,18 @@ export default function JobDetail() {
     try {
       const res = await api.get(`/api/jobs/${jobId}`);
       setJob(res.data.job);
+      
+      // Load Chat Room
+      if (res.data.job.status !== 'open') {
+        try {
+          // Attempt to find the chat room for this job
+          const roomRes = await api.get('/api/chat/rooms');
+          const jobRoom = roomRes.data.rooms.find(r => r.job?._id === jobId || r.job === jobId);
+          if (jobRoom) setChatRoomId(jobRoom._id);
+        } catch (e) {
+          console.error('Failed to load chat room', e);
+        }
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load job');
     }
@@ -242,7 +255,18 @@ export default function JobDetail() {
                         </span>
                      )}
                  </div>
-                 <JobTrackingMap 
+               /* Chat Button */}
+              {chatRoomId && (
+                <button
+                  onClick={() => navigate(`/chat?roomId=${chatRoomId}`)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Open Chat
+                </button>
+              )}
+
+              {  <JobTrackingMap 
                     job={job} 
                     userRole={job.customer === user?._id ? 'customer' : 'worker'} 
                  />

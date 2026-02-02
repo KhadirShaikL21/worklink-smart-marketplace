@@ -18,6 +18,19 @@ export default function Chat() {
   const [showMobileChat, setShowMobileChat] = useState(false);
   const messagesEndRef = useRef(null);
 
+  // Parse query params for roomId
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get('roomId');
+    if (roomId && rooms.length > 0) {
+      const room = rooms.find(r => r._id === roomId);
+      if (room) {
+        setActiveRoom(room);
+        setShowMobileChat(true);
+      }
+    }
+  }, [rooms]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
