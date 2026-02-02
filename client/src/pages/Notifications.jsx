@@ -1,53 +1,20 @@
 import { useEffect, useState } from 'react';
-import api from '../utils/api';
-import { useSocket } from '../context/SocketContext.jsx';
 import { Bell, Check, Clock, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
+import { useNotifications } from '../context/NotificationContext.jsx';
 
 export default function Notifications() {
-  const [items, setItems] = useState([]);
+  const { notifications, markAsRead, markAllAsRead, refresh, loading, initialized } = useNotifications();
   const [error, setError] = useState('');
-  const { socket } = useSocket();
-
-  const load = async () => {
-    try {
-      const res = await api.get('/api/notifications');
-      setItems(res.data.notifications || []);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load notifications');
-    }
-  };
 
   useEffect(() => {
-    load();
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-    const handler = note => setItems(prev => [note, ...prev]);
-    socket.on('notification:new', handler);
-    return () => socket.off('notification:new', handler);
-  }, [socket]);
-
-  const markRead = async id => {
-    try {
-      await api.post(`/api/notifications/${id}/read`);
-      setItems(prev => prev.map(item => 
-        item._id === id ? { ...item, read: true } : item
-      ));
-    } catch (err) {
-      console.error('Failed to mark as read', err);
+    if (!initialized) {
+      refresh().catch(err => {
+        console.error('Failed to load notifications', err);
+        setError('Failed to load notifications');
+      });
     }
-  };
-
-  const markAllRead = async () => {
-    // Assuming backend supports this or we loop
-    // For now, just UI update if backend doesn't support bulk
-    const unread = items.filter(i => !i.read);
-    for (const item of unread) {
-      await markRead(item._id);
-    }
-  };
+  }, [initialized, refresh]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -58,9 +25,9 @@ export default function Notifications() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
         </div>
-        {items.some(i => !i.read) && (
+        {notifications.some(i => !i.read) && (
           <button 
-            onClick={markAllRead}
+            onClick={markAllAsRead}
             className="text-sm font-medium text-primary-600 hover:text-primary-700 hover:underline"
           >
             Mark all as read
@@ -76,7 +43,9 @@ export default function Notifications() {
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        {items.length === 0 ? (
+        {loading ? (
+          <div className="p-12 text-center text-gray-500">Loading notifications...</div>
+        ) : notifications.length === 0 ? (
           <div className="p-12 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Bell className="w-8 h-8 text-gray-400" />
@@ -86,7 +55,7 @@ export default function Notifications() {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {items.map(n => (
+            {notifications.map(n => (
               <div 
                 key={n._id} 
                 className={clsx(
@@ -119,7 +88,7 @@ export default function Notifications() {
                       </span>
                       {!n.read && (
                         <button 
-                          onClick={() => markRead(n._id)}
+                          onClick={() => markAsRead(n._id)}
                           className="p-1.5 text-primary-600 hover:bg-primary-50 rounded-full transition-colors"
                           title="Mark as read"
                         >
