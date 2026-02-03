@@ -25,6 +25,7 @@
   - **Real-Time Chat:** Instant messaging between Customer and Worker (powered by Socket.io).
   - **AI Assistant:** Context-aware AI chatbot (Gemini-powered) to assist customers with job details and platform navigation.
   - **Notification System:** Real-time system alerts for job updates and matches.
+  - **Voice Notes:** Audio messaging support in chat with waveform visualization.
 - **Financials & Reputation**
   - **Secure Payments:** Integrated Stripe payment gateway for escrow-style secure transactions.
   - **Ratings & Reviews:** Detailed feedback system with granular ratings (Punctuality, Quality, Professionalism).
@@ -34,7 +35,6 @@
 
 ### 🚧 In Development (Roadmap)
 
-- **Voice Notes:** Audio messaging support in chat.
 - **Localization (I18n):** Multi-language support (English/Hindi).
 - **Video Consultation:** Pre-booking video calls for complex job estimations.
 
