@@ -2,9 +2,82 @@ import { useEffect, useState, useRef } from 'react';
 import api from '../utils/api';
 import { useSocket } from '../context/SocketContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Send, MessageSquare, User, Mic, Play, Pause, ArrowLeft, Briefcase } from 'lucide-react';
+import { Send, MessageSquare, User, Mic, Play, Pause, ArrowLeft, Briefcase, Trash2, StopCircle, Loader2 } from 'lucide-react';
 import { ChatSkeleton } from '../components/ui/Skeleton.jsx';
 import clsx from 'clsx';
+
+// Audio Player Component
+const AudioMessage = ({ url }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+      const audio = audioRef.current;
+      if (!audio) return;
+
+      const handleTimeUpdate = () => {
+           const p = (audio.currentTime / audio.duration) * 100;
+           setProgress(p || 0);
+      };
+
+      const handleEnded = () => {
+          setIsPlaying(false);
+          setProgress(0);
+      };
+
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('ended', handleEnded);
+
+      return () => {
+          audio.removeEventListener('timeupdate', handleTimeUpdate);
+          audio.removeEventListener('ended', handleEnded);
+      };
+  }, []);
+
+  const togglePlay = () => {
+      if (audioRef.current.paused) {
+          audioRef.current.play();
+          setIsPlaying(true);
+      } else {
+          audioRef.current.pause();
+          setIsPlaying(false);
+      }
+  };
+
+  return (
+    <div className="flex items-center gap-3 w-64">
+      <button 
+          onClick={togglePlay}
+          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors flex-shrink-0"
+      >
+          {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+      </button>
+      
+      <div className="flex-1 flex flex-col gap-1">
+          {/* Waveform / Progress Bar */}
+          <div className="h-6 flex items-center gap-[2px] w-full overflow-hidden">
+             {Array.from({ length: 25 }).map((_, i) => (
+                  <div 
+                      key={i} 
+                      className={clsx(
+                          "w-1 rounded-full transition-all duration-300",
+                          (i / 25) * 100 < progress 
+                              ? "bg-current opacity-100" // Played part
+                              : "bg-current opacity-30"  // Unplayed part
+                      )}
+                      style={{ 
+                          height: `${Math.max(30, Math.random() * 100)}%`, // Random height for waveform look
+                          animation: isPlaying ? `pulse 1s infinite ${i * 0.05}s` : 'none' 
+                      }}
+                  />
+              ))}
+          </div>
+      </div>
+      <audio ref={audioRef} src={url} className="hidden" />
+    </div>
+  );
+};
 
 export default function Chat() {
   const { user } = useAuth();
@@ -16,6 +89,19 @@ export default function Chat() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showMobileChat, setShowMobileChat] = useState(false);
+  
+  // Audio Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const analyserRef = useRef(null);
+  const canvasRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  
   const messagesEndRef = useRef(null);
 
   // Parse query params for roomId
@@ -96,6 +182,147 @@ export default function Chat() {
     }
   };
 
+  // --- Voice Note Logic ---
+
+  const visualizeRecording = () => {
+    if (!analyserRef.current || !canvasRef.current) return;
+    
+    const canvas = canvasRef.current;
+    const canvasCtx = canvas.getContext("2d");
+    const bufferLength = analyserRef.current.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    
+    const draw = () => {
+      if (!isRecording) return;
+      
+      animationFrameRef.current = requestAnimationFrame(draw);
+      analyserRef.current.getByteFrequencyData(dataArray);
+      
+      canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw bars
+      const barWidth = (canvas.width / bufferLength) * 2.5;
+      let barHeight;
+      let x = 0;
+      
+      for (let i = 0; i < bufferLength; i++) {
+        barHeight = dataArray[i] / 2;
+        
+        // Use primary color for bars
+        canvasCtx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`; 
+        canvasCtx.fillStyle = '#4f46e5'; // Indigo-600
+        canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+        
+        x += barWidth + 1;
+      }
+    };
+    
+    draw();
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+
+      // Setup Audio Context for visualization
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 256;
+      source.connect(analyserRef.current);
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorderRef.current.onstop = handleStopRecording;
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+      // Start visualization loop
+      setTimeout(visualizeRecording, 100);
+
+    } catch (err) {
+      console.error('Error accessing microphone:', err);
+      if(err.name === 'NotAllowedError'){
+        setError('Microphone access denied. Please allow permissions.');
+      } else {
+        setError('Could not access microphone.');
+      }
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(timerRef.current);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (audioContextRef.current) audioContextRef.current.close();
+      
+      // Stop all tracks
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+       mediaRecorderRef.current.onstop = null; // Prevent upload
+       mediaRecorderRef.current.stop();
+       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+       setIsRecording(false);
+       clearInterval(timerRef.current);
+       setRecordingTime(0);
+       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+       if (audioContextRef.current) audioContextRef.current.close();
+    }
+  };
+
+  const handleStopRecording = async () => {
+    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    const file = new File([audioBlob], 'voice-note.webm', { type: 'audio/webm' });
+    
+    setIsUploadingAudio(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await api.post('/api/uploads/audio', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const audioUrl = res.data.url;
+      
+      await api.post('/api/chat', { 
+        roomId: activeRoom._id, 
+        type: 'audio',
+        audioUrl 
+      });
+      
+    } catch (err) {
+      console.error('Failed to upload audio', err);
+      setError('Failed to send voice note');
+    } finally {
+      setIsUploadingAudio(false);
+      setRecordingTime(0);
+    }
+  };
+
+  const formatDuration = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   // Helper to format time
   const formatTime = (date) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -119,6 +346,81 @@ export default function Chat() {
       <img src={other.avatarUrl} alt={other.name} className="w-full h-full object-cover" />
     ) : (
       <User className="w-5 h-5" />
+    );
+  };
+
+  // --- Audio Player Component ---
+  const AudioMessage = ({ url }) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        const handleTimeUpdate = () => {
+             const p = (audio.currentTime / audio.duration) * 100;
+             setProgress(p);
+        };
+
+        const handleEnded = () => {
+            setIsPlaying(false);
+            setProgress(0);
+        };
+
+        audio.addEventListener('timeupdate', handleTimeUpdate);
+        audio.addEventListener('ended', handleEnded);
+
+        return () => {
+            audio.removeEventListener('timeupdate', handleTimeUpdate);
+            audio.removeEventListener('ended', handleEnded);
+        };
+    }, []);
+
+    const togglePlay = () => {
+        if (audioRef.current.paused) {
+            audioRef.current.play();
+            setIsPlaying(true);
+        } else {
+            audioRef.current.pause();
+            setIsPlaying(false);
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-3 w-64">
+            <button 
+                onClick={togglePlay}
+                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors flex-shrink-0"
+            >
+                {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+            </button>
+            
+            <div className="flex-1 flex flex-col gap-1">
+                {/* Fake Waveform / Progress Bar */}
+                <div className="h-8 flex items-center gap-[2px] w-full overflow-hidden">
+                   {/* Create a static waveform visual that gets 'filled' based on progress */}
+                    {Array.from({ length: 30 }).map((_, i) => (
+                        <div 
+                            key={i} 
+                            className={clsx(
+                                "w-1 rounded-full transition-all duration-300",
+                                (i / 30) * 100 < progress 
+                                    ? "bg-current opacity-100" // Played part
+                                    : "bg-current opacity-30"  // Unplayed part
+                            )}
+                            style={{ 
+                                height: `${Math.max(20, Math.random() * 100)}%`, // Random height for looks
+                                animation: isPlaying ? `bounce 1s infinite ${i * 0.05}s` : 'none' 
+                            }}
+                        />
+                    ))}
+                </div>
+            </div>
+            
+            <audio ref={audioRef} src={url} className="hidden" />
+        </div>
     );
   };
 
@@ -230,17 +532,7 @@ export default function Chat() {
                             : "bg-white border border-gray-200 text-gray-900 rounded-bl-none"
                         )}>
                           {msg.type === 'audio' ? (
-                            <div className="flex items-center gap-2">
-                              <Mic className="w-4 h-4" />
-                              <a 
-                                href={msg.audioUrl} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="underline text-sm"
-                              >
-                                Play Audio Message
-                              </a>
-                            </div>
+                            <AudioMessage url={msg.audioUrl} />
                           ) : (
                             <p className="text-sm leading-relaxed">{msg.body}</p>
                           )}
@@ -258,24 +550,66 @@ export default function Chat() {
                 <div ref={messagesEndRef} />
               </div>
 
+
               {/* Input Area */}
               <div className="p-4 border-t border-gray-200 bg-white">
-                <form onSubmit={send} className="flex gap-2">
-                  <input
-                    value={body}
-                    onChange={e => setBody(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 rounded-full border-gray-300 focus:border-primary-500 focus:ring-primary-500 px-4 py-2 shadow-sm"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    disabled={!body.trim()}
-                    className="p-2 rounded-full bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center justify-center w-10 h-10"
-                  >
-                    <Send className="w-5 h-5 ml-0.5" />
+                {isRecording ? (
+                    <div className="flex items-center gap-3 w-full bg-gray-50 rounded-full px-4 py-2 border border-red-200 animate-pulse">
+                        <div className="w-3 h-3 rounded-full bg-red-600 animate-bounce" />
+                        <span className="text-red-600 font-mono text-sm w-12">{formatDuration(recordingTime)}</span>
+                        
+                        {/* Visualization Canvas */}
+                        <canvas ref={canvasRef} className="flex-1 h-8 rounded" width={200} height={32} />
+
+                        <div className="flex gap-2">
+                             <button
+                                onClick={cancelRecording}
+                                className="p-2 rounded-full text-gray-500 hover:bg-gray-200 hover:text-red-600 transition-colors"
+                                title="Cancel"
+                            >
+                                <Trash2 className="w-5 h-5" />
+                            </button>
+                             <button
+                                onClick={stopRecording}
+                                className="p-2 rounded-full bg-red-600 text-white hover:bg-red-700 shadow-md transform hover:scale-105 transition-all"
+                                title="Send"
+                            >
+                                <Send className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <form onSubmit={send} className="flex gap-2 items-center">
+                    <button
+                        type="button"
+                        onClick={startRecording}
+                        disabled={loading || isUploadingAudio}
+                        className={clsx(
+                            "p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors",
+                            isUploadingAudio ? "opacity-50 cursor-not-allowed" : ""
+                        )}
+                        title="Record Voice Note"
+                    >
+                         {isUploadingAudio ? <Loader2 className="w-6 h-6 animate-spin text-primary-600" /> : <Mic className="w-6 h-6" />}
+                    </button>
+                    
+                    <input
+                        value={body}
+                        onChange={e => setBody(e.target.value)}
+                        placeholder="Type a message..."
+                        className="flex-1 rounded-full border-gray-300 focus:border-primary-500 focus:ring-primary-500 px-4 py-2 shadow-sm"
+                        disabled={isUploadingAudio}
+                    />
+                    <button
+                        type="submit"
+                        disabled={!body.trim() || isUploadingAudio}
+                        className="p-2 rounded-full bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center justify-center w-10 h-10"
+                    >
+                        <Send className="w-5 h-5 ml-0.5" />
                   </button>
+                    
                 </form>
+                )}
               </div>
             </>
           ) : (
