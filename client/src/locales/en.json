@@ -26,6 +26,35 @@
     "step3Title": "Work & Pay",
     "step3Desc": "Track progress, chat securely, and pay only when satisfied."
   },
+  "workers": {
+    "title": "Find Workers",
+    "subtitle": "Browse skilled professionals for your needs",
+    "searchPlaceholder": "Search by name or skill",
+    "allCategories": "All Categories",
+    "allSubSkills": "All Sub-skills",
+    "filter": "Filter",
+    "viewProfile": "View Profile",
+    "busy": "Busy / On Job",
+    "available": "Available Now",
+    "perHour": "/hr"
+  },
+  "findWork": {
+    "title": "Find Work",
+    "subtitle": "Browse open jobs and apply to join the team",
+    "applyNow": "Apply Now",
+    "viewDetails": "View Details",
+    "locationNotSpecified": "Location not specified",
+    "hrsEst": "hrs est.",
+    "highPriority": "High Priority"
+  },
+  "myJobs": {
+    "title": "My Assigned Jobs",
+    "subtitle": "Track your ongoing and completed work",
+    "activeJobs": "Active Jobs",
+    "completedJobs": "Completed Jobs",
+    "noActiveJobs": "No active jobs found",
+    "noActiveJobsDesc": "You have no active assignments."
+  },
   "common": {
     "language": "Language",
     "loading": "Loading..."
