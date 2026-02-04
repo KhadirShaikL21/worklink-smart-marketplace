@@ -1,17 +1,17 @@
 {
   "nav": {
-    "home": "मुखपृष्ठ",
-    "findWork": "पनि खोजें",
-    "myJobs": "मेरे कार्य",
-    "jobs": "नौकरियां",
-    "workers": "कामगार",
-    "assistant": "सहायक",
-    "notifications": "सूचनाएं",
-    "profile": "प्रोफाइल",
-    "login": "लॉग इन",
-    "register": "रजिस्टर",
-    "dashboard": "डैशबोर्ड",
-    "logout": "लॉग आउट"
+    "home": "హోమ్",
+    "findWork": "పని వెతకండి",
+    "myJobs": "నా పనులు",
+    "jobs": "పనులు",
+    "workers": "పనివారు",
+    "assistant": "అసిస్టెంట్",
+    "notifications": "నోటిఫికేషన్లు",
+    "profile": "ప్రొఫైల్",
+    "login": "లాగిన్",
+    "register": "రిజిస్టర్",
+    "dashboard": "డ్యాష్‌బోర్డ్",
+    "logout": "లాగ్ అవుట్"
   },
   "home": {
     "heroTitle": "ప్రति పనికి నమ్మకమైన నిపుణులను కనుగొనండి",
