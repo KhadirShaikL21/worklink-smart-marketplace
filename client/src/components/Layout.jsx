@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNotifications } from '../context/NotificationContext.jsx';
 import AssistantWidget from './AssistantWidget.jsx';
+import LanguageSwitcher from './LanguageSwitcher.jsx';
 import { AnimatePresence } from 'framer-motion';
 import PageTransition from './ui/PageTransition.jsx';
 import { 
@@ -10,33 +11,35 @@ import {
   Home, LogOut, Search, Sparkles 
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const { unreadCount } = useNotifications();
+  const { t } = useTranslation();
 
   const navigation = [
-    { name: 'Home', href: '/', icon: Home },
+    { name: t('nav.home'), href: '/', icon: Home },
     ...(user?.roles?.includes('worker') 
       ? [
-          { name: 'Find Work', href: '/find-work', icon: Search },
-          { name: 'My Jobs', href: '/worker-jobs', icon: Briefcase }
+          { name: t('nav.findWork'), href: '/find-work', icon: Search },
+          { name: t('nav.myJobs'), href: '/worker-jobs', icon: Briefcase }
         ] 
       : []
     ),
     ...(user?.roles?.includes('customer')
-      ? [{ name: 'Jobs', href: '/jobs', icon: Briefcase }]
+      ? [{ name: t('nav.jobs'), href: '/jobs', icon: Briefcase }]
       : []
     ),
-    { name: 'Workers', href: '/workers', icon: Search },
-    { name: 'Assistant', href: '/assistant', icon: Sparkles },
+    { name: t('nav.workers'), href: '/workers', icon: Search },
+    { name: t('nav.assistant'), href: '/assistant', icon: Sparkles },
   ];
 
   const userNavigation = [
-    { name: 'Notifications', href: '/notifications', icon: Bell },
-    { name: 'Profile', href: '/profile', icon: User },
+    { name: t('nav.notifications'), href: '/notifications', icon: Bell },
+    { name: t('nav.profile'), href: '/profile', icon: User },
   ];
 
   return (
@@ -78,6 +81,7 @@ export default function Layout() {
 
             {/* Desktop User Menu */}
             <div className="hidden md:flex items-center space-x-4">
+              <LanguageSwitcher />
               {user ? (
                 <>
                   <div className="flex items-center space-x-2 border-r border-gray-200 pr-4">
@@ -113,11 +117,12 @@ export default function Layout() {
                 </>
               ) : (
                 <div className="flex items-center gap-3">
+                  <LanguageSwitcher />
                   <Link to="/login" className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors">
-                    Log in
+                    {t('nav.login')}
                   </Link>
                   <Link to="/register" className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 shadow-sm transition-all hover:shadow-md">
-                    Sign up
+                    {t('nav.register')}
                   </Link>
                 </div>
               )}
