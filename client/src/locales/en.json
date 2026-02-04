@@ -1,0 +1,62 @@
+{
+  "nav": {
+    "home": "Home",
+    "findWork": "Find Work",
+    "myJobs": "My Jobs",
+    "jobs": "Jobs",
+    "workers": "Workers",
+    "assistant": "Assistant",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "login": "Login",
+    "register": "Register",
+    "dashboard": "Dashboard",
+    "logout": "Log Out"
+  },
+  "home": {
+    "heroTitle": "Find Trusted Blue-Collar Pros for Every Job",
+    "heroSubtitle": "Connect with skilled professionals or find work opportunities in your area instantly. Verified workers, secure payments, and smart matching.",
+    "postJob": "Post a Job",
+    "findWorkBtn": "Find Work",
+    "howItWorks": "How It Works",
+    "step1Title": "Post a Job",
+    "step1Desc": "Describe what you need, attach photos or videos, and set your location.",
+    "step2Title": "Get Matched",
+    "step2Desc": "Our AI matches you with the best available workers nearby.",
+    "step3Title": "Work & Pay",
+    "step3Desc": "Track progress, chat securely, and pay only when satisfied."
+  },
+  "workers": {
+    "title": "Find Workers",
+    "subtitle": "Browse skilled professionals for your needs",
+    "searchPlaceholder": "Search by name or skill",
+    "allCategories": "All Categories",
+    "allSubSkills": "All Sub-skills",
+    "filter": "Filter",
+    "viewProfile": "View Profile",
+    "busy": "Busy / On Job",
+    "available": "Available Now",
+    "perHour": "/hr"
+  },
+  "findWork": {
+    "title": "Find Work",
+    "subtitle": "Browse open jobs and apply to join the team",
+    "applyNow": "Apply Now",
+    "viewDetails": "View Details",
+    "locationNotSpecified": "Location not specified",
+    "hrsEst": "hrs est.",
+    "highPriority": "High Priority"
+  },
+  "myJobs": {
+    "title": "My Assigned Jobs",
+    "subtitle": "Track your ongoing and completed work",
+    "activeJobs": "Active Jobs",
+    "completedJobs": "Completed Jobs",
+    "noActiveJobs": "No active jobs found",
+    "noActiveJobsDesc": "You have no active assignments."
+  },
+  "common": {
+    "language": "Language",
+    "loading": "Loading..."
+  }
+}

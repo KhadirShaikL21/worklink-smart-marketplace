@@ -18,11 +18,11 @@
 
 ## Phase 3: Communication & Accessibility
 
-- [ ] **Voice Notes in Chat**
-  - [ ] Frontend: Add microphone button to Chat interface.
-  - [ ] Frontend: Implement audio recording logic.
-  - [ ] Backend: Handle audio file uploads (similar to image uploads).
-  - [ ] Frontend: Audio player component in chat bubbles.
+- [x] **Voice Notes in Chat**
+  - [x] Frontend: Add microphone button to Chat interface.
+  - [x] Frontend: Implement audio recording logic.
+  - [x] Backend: Handle audio file uploads (similar to image uploads).
+  - [x] Frontend: Audio player component in chat bubbles.
 - [ ] **Multi-Language Support**
   - [ ] Frontend: Install `i18next` or similar library.
   - [ ] Frontend: Create translation files (English, Hindi).

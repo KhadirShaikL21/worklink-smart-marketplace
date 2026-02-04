@@ -2,9 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { ArrowRight, Shield, Zap, Users, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function Home() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -18,26 +20,26 @@ export default function Home() {
               AI-Powered Job Matching
             </div>
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6">
-              Find the perfect <span className="text-primary-600">worker</span> for your next job.
+              {t('home.heroTitle')}
             </h1>
             <p className="text-xl text-gray-600 mb-10 leading-relaxed">
-              WorkLink connects skilled blue-collar professionals with employers using smart AI matching. Fair, fast, and reliable.
+              {t('home.heroSubtitle')}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {user?.roles?.includes('worker') ? (
                 <>
                   <Link to="/find-work" className="inline-flex items-center justify-center px-8 py-4 text-base font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-lg shadow-primary-600/20">
-                    Find Work
+                    {t('home.findWorkBtn')}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                   <Link to="/jobs/new" className="inline-flex items-center justify-center px-8 py-4 text-base font-medium rounded-lg text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm">
-                    Post a Job
+                    {t('home.postJob')}
                   </Link>
                 </>
               ) : user?.roles?.includes('customer') ? (
                 <>
                   <Link to="/jobs/new" className="inline-flex items-center justify-center px-8 py-4 text-base font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-lg shadow-primary-600/20">
-                    Post a Job
+                    {t('home.postJob')}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                   <Link to="/workers" className="inline-flex items-center justify-center px-8 py-4 text-base font-medium rounded-lg text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm">
@@ -47,7 +49,7 @@ export default function Home() {
               ) : (
                 <>
                   <Link to="/register" className="inline-flex items-center justify-center px-8 py-4 text-base font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 transition-colors shadow-lg shadow-primary-600/20">
-                    Find Work
+                    {t('home.findWorkBtn')}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                   <Link to="/register" className="inline-flex items-center justify-center px-8 py-4 text-base font-medium rounded-lg text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 transition-colors shadow-sm">
@@ -68,27 +70,27 @@ export default function Home() {
               <div className="w-14 h-14 rounded-xl bg-primary-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Zap className="h-7 w-7 text-primary-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Instant Matching</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">{t('home.step1Title')}</h3>
               <p className="text-gray-600 leading-relaxed">
-                Our AI algorithm analyzes skills and requirements to match workers with jobs in seconds, not days.
+               {t('home.step1Desc')}
               </p>
             </div>
             <div className="p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-lg transition-all duration-300 group">
               <div className="w-14 h-14 rounded-xl bg-secondary-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Shield className="h-7 w-7 text-secondary-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Verified Profiles</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">{t('home.step2Title')}</h3>
               <p className="text-gray-600 leading-relaxed">
-                Every worker is verified with background checks and skill assessments to ensure quality and trust.
+                {t('home.step2Desc')}
               </p>
             </div>
             <div className="p-8 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-lg transition-all duration-300 group">
               <div className="w-14 h-14 rounded-xl bg-green-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <Users className="h-7 w-7 text-green-600" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Fair Opportunities</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">{t('home.step3Title')}</h3>
               <p className="text-gray-600 leading-relaxed">
-                We believe in equal access to work. Our platform ensures fair pay and transparent working conditions.
+               {t('home.step3Desc')}
               </p>
             </div>
           </div>

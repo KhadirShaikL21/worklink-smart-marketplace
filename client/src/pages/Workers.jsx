@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import api from '../utils/api';
 import { Search, Filter, User, Briefcase, Star, IndianRupee, MapPin, Loader2 } from 'lucide-react';
 import { WorkerCardSkeleton } from '../components/ui/Skeleton.jsx';
+import { useTranslation } from 'react-i18next';
 
 export default function Workers() {
+  const { t } = useTranslation();
   const [workers, setWorkers] = useState([]);
   const [skill, setSkill] = useState('');
   const [subSkill, setSubSkill] = useState('');
@@ -45,8 +47,8 @@ export default function Workers() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Find Workers</h1>
-          <p className="text-gray-500 mt-1">Browse skilled professionals for your needs</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('workers.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('workers.subtitle')}</p>
         </div>
         
         {/* Search and Filter Bar */}
@@ -58,7 +60,7 @@ export default function Workers() {
             <input
               type="text"
               className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-              placeholder="Search by name or skill"
+              placeholder={t('workers.searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && load()}
@@ -71,7 +73,7 @@ export default function Workers() {
               onChange={e => { setSkill(e.target.value); setSubSkill(''); }}
               className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-lg"
             >
-              <option value="">All Categories</option>
+              <option value="">{t('workers.allCategories')}</option>
               {categories.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
             </select>
             
@@ -81,7 +83,7 @@ export default function Workers() {
               disabled={!skill}
               className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-lg disabled:bg-gray-100 disabled:text-gray-400"
             >
-              <option value="">All Sub-skills</option>
+              <option value="">{t('workers.allSubSkills')}</option>
               {(subSkillsByCategory[skill] || []).map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             
@@ -90,7 +92,7 @@ export default function Workers() {
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
               <Filter className="h-4 w-4 mr-2" />
-              Filter
+              {t('workers.filter')}
             </button>
           </div>
         </div>
@@ -143,7 +145,7 @@ export default function Workers() {
                         <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{worker.name}</h3>
                         <p className="text-sm text-gray-500 flex items-center">
                           <Briefcase className="w-3 h-3 mr-1" />
-                          {worker.title || 'Worker'}
+                          {worker.title || t('workers.worker', 'Worker')}
                         </p>
                       </div>
                     </div>
@@ -182,13 +184,13 @@ export default function Workers() {
                 <div className="bg-gray-50 px-6 py-3 border-t border-gray-100 flex justify-between items-center">
                   <span className={`text-xs font-medium flex items-center ${worker.isAvailable ? 'text-green-600' : 'text-red-500'}`}>
                     <span className={`w-2 h-2 rounded-full mr-2 ${worker.isAvailable ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    {worker.isAvailable ? 'Available Now' : 'Busy / On Job'}
+                    {worker.isAvailable ? t('workers.available') : t('workers.busy')}
                   </span>
                   <Link 
                     to={`/profile/${worker.id}`}
                     className="text-sm font-medium text-primary-600 hover:text-primary-700"
                   >
-                    View Profile
+                    {t('workers.viewProfile')}
                   </Link>
                 </div>
               </div>
@@ -198,8 +200,8 @@ export default function Workers() {
               <div className="mx-auto h-12 w-12 text-gray-400">
                 <Search className="h-12 w-12" />
               </div>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No workers found</h3>
-              <p className="mt-1 text-sm text-gray-500">Try adjusting your search or filters.</p>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">{t('workers.noWorkers', 'No workers found')}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t('workers.adjustFilters', 'Try adjusting your search or filters.')}</p>
             </div>
           )}
         </div>

@@ -4,8 +4,10 @@ import api from '../utils/api';
 import { Briefcase, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { JobCardSkeleton } from '../components/ui/Skeleton.jsx';
 import clsx from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 export default function WorkerJobs() {
+  const { t } = useTranslation();
   const [jobs, setJobs] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -38,8 +40,8 @@ export default function WorkerJobs() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Assigned Jobs</h1>
-          <p className="text-gray-500 mt-1">Track your ongoing and completed work</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('myJobs.title')}</h1>
+          <p className="text-gray-500 mt-1">{t('myJobs.subtitle')}</p>
         </div>
       </div>
 
@@ -55,7 +57,7 @@ export default function WorkerJobs() {
               'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
             )}
           >
-            Active Jobs
+            {t('myJobs.activeJobs')}
           </button>
           <button
             onClick={() => setFilter('completed')}
@@ -66,7 +68,7 @@ export default function WorkerJobs() {
               'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
             )}
           >
-            Completed Jobs
+            {t('myJobs.completedJobs')}
           </button>
         </nav>
       </div>
