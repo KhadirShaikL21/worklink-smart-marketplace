@@ -1,4 +1,4 @@
-# WorkLink Smart Marketplace 
+# WorkLink Smart Marketplace For Blue Collar Workers
 
 ![Project Status](https://img.shields.io/badge/Status-In%20Development-blue?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
