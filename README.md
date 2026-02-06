@@ -6,11 +6,12 @@
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
 > **Submission for Problem Statement 7: Full Stack (Frontend + Backend) – End-to-End Web Application**  
-> *Theme: Bridging the digital divide for blue-collar workers through a secure, structured, and AI-enabled on-demand marketplace.*
+> _Theme: Bridging the digital divide for blue-collar workers through a secure, structured, and AI-enabled on-demand marketplace._
 
 ---
 
 ## 📖 Table of Contents
+
 - [Project Overview](#-project-overview)
 - [System Architecture](#-system-architecture)
 - [Key Features](#-key-features)
@@ -24,9 +25,10 @@
 
 ## 📖 Project Overview
 
-**WorkLink** is a next-generation platform designed to organize the unorganized service sector. It connects customers with skilled local workers (plumbers, electricians, cleaners) through a seamless, real-time interface. 
+**WorkLink** is a next-generation platform designed to organize the unorganized service sector. It connects customers with skilled local workers (plumbers, electricians, cleaners) through a seamless, real-time interface.
 
 What makes WorkLink unique is its **AI-First approach**:
+
 1.  **For Workers:** An AI companion that speaks their language (literally - via Voice & Translation), helping them manage jobs and communicate professionally.
 2.  **For Customers:** An intelligent concierge that converts vague voice commands (e.g., "I need someone to fix my tap urgently") into structured job posts with categorized skills and budget estimates.
 
@@ -83,66 +85,75 @@ graph TD
 ## 🌟 Key Features
 
 ### 🧠 1. Voice-Enabled AI Assistant (Gemini 2.0)
-*   **Role-Aware Context:** The AI behaves differently based on who is logged in.
-    *   *Worker Mode:* Acts as a supervisor/coach. Mentors them on how to reply to customers.
-    *   *Customer Mode:* Acts as a service concierge. Helps draft job descriptions.
-*   **Voice-to-Voice:** Users can tap the microphone to speak, and the assistant replies with synthesized speech.
-*   **Auto-Healing:** Backend automatically switches between `gemini-2.0-flash`, `gemini-1.5-flash`, and other models if one fails or is rate-limited.
+
+- **Role-Aware Context:** The AI behaves differently based on who is logged in.
+  - _Worker Mode:_ Acts as a supervisor/coach. Mentors them on how to reply to customers.
+  - _Customer Mode:_ Acts as a service concierge. Helps draft job descriptions.
+- **Voice-to-Voice:** Users can tap the microphone to speak, and the assistant replies with synthesized speech.
+- **Auto-Healing:** Backend automatically switches between `gemini-2.0-flash`, `gemini-1.5-flash`, and other models if one fails or is rate-limited.
 
 ### 📍 2. Geospatial Matching & Live Tracking
-*   **Smart Matching:** Workers are filtered by **Skill Match** AND **Wait-time** AND **Distance** (using MongoDB `$near` queries).
-*   **Real-Time Map:** Customers can see the worker's live location approaching their house on a map (Leaflet.js) once a job is started.
+
+- **Smart Matching:** Workers are filtered by **Skill Match** AND **Wait-time** AND **Distance** (using MongoDB `$near` queries).
+- **Real-Time Map:** Customers can see the worker's live location approaching their house on a map (Leaflet.js) once a job is started.
 
 ### 🛡️ 3. Security & Trust Flow
-*   **OTP Verification:** A "Digital Handshake". The job timer *cannot* start until the worker enters the 4-digit OTP provided by the customer at the location.
-*   **Escrow Payments:** Funds are reserved via Stripe when a job is accepted but only released when the OTP verifies completion.
-*   **Encrypted Data:** Passwords hashed with Bcrypt, API communication secured with JWT.
+
+- **OTP Verification:** A "Digital Handshake". The job timer _cannot_ start until the worker enters the 4-digit OTP provided by the customer at the location.
+- **Escrow Payments:** Funds are reserved via Stripe when a job is accepted but only released when the OTP verifies completion.
+- **Encrypted Data:** Passwords hashed with Bcrypt, API communication secured with JWT.
 
 ### 💬 4. Multi-Language Communication
-*   **Translation Layer:** UI supports English, Hindi (हिन्दी), and Telugu (తెలుగు).
-*   **Chat System:** Integrated text and image chat that allows structured negotiation without leaving the app.
+
+- **Translation Layer:** UI supports English, Hindi (हिन्दी), and Telugu (తెలుగు).
+- **Chat System:** Integrated text and image chat that allows structured negotiation without leaving the app.
 
 ---
 
 ## 💻 Tech Stack
 
 ### **Frontend (Client)**
-| Technology | Purpose |
-| :--- | :--- |
-| **React 18** | Component-based UI Architecture |
-| **Vite** | Lightning-fast build tool |
-| **Tailwind CSS** | Responsive styling system |
-| **Framer Motion** | Smooth UI transitions & animations |
-| **React Leaflet** | Interactive maps for location tracking |
+
+| Technology           | Purpose                                |
+| :------------------- | :------------------------------------- |
+| **React 18**         | Component-based UI Architecture        |
+| **Vite**             | Lightning-fast build tool              |
+| **Tailwind CSS**     | Responsive styling system              |
+| **Framer Motion**    | Smooth UI transitions & animations     |
+| **React Leaflet**    | Interactive maps for location tracking |
 | **Socket.io Client** | Real-time bi-directional communication |
-| **Lucide React** | Modern, clean icon set |
+| **Lucide React**     | Modern, clean icon set                 |
 
 ### **Backend (Server)**
-| Technology | Purpose |
-| :--- | :--- |
-| **Node.js** | JavaScript Runtime |
-| **Express.js** | REST API Framework |
-| **MongoDB (Mongoose)** | NoSQL Database for scalable data models |
-| **Google GenAI SDK** | Integration with Gemini Models |
-| **Socket.io** | WebSocket server for chat & notifications |
-| **Stripe** | Payment processing gateway |
-| **Multer / Cloudinary** | File upload and cloud storage |
+
+| Technology              | Purpose                                   |
+| :---------------------- | :---------------------------------------- |
+| **Node.js**             | JavaScript Runtime                        |
+| **Express.js**          | REST API Framework                        |
+| **MongoDB (Mongoose)**  | NoSQL Database for scalable data models   |
+| **Google GenAI SDK**    | Integration with Gemini Models            |
+| **Socket.io**           | WebSocket server for chat & notifications |
+| **Stripe**              | Payment processing gateway                |
+| **Multer / Cloudinary** | File upload and cloud storage             |
 
 ---
 
 ## 🔌 API Documentation
 
 ### **Authentication**
+
 - `POST /api/auth/register` - Register a new User (Customer/Worker)
 - `POST /api/auth/login` - Login and receive `token`
 - `GET /api/auth/me` - Get current user profile (Protected)
 
 ### **AI Services**
+
 - `POST /api/ai/chat` - Send a message to the AI Assistant.
-    - *Body:* `{ "message": "Help me find a plumber", "context": "..." }`
+  - _Body:_ `{ "message": "Help me find a plumber", "context": "..." }`
 - `POST /api/ai/job-assistant` - Parse natural language into structured Job JSON.
 
 ### **Jobs Module**
+
 - `POST /api/jobs` - Create a new Service Request.
 - `GET /api/jobs/nearby` - Find jobs within X kilometers (Worker only).
 - `GET /api/jobs/:id` - Get full details of a specific job.
@@ -152,6 +163,7 @@ graph TD
 - `PATCH /api/jobs/:id/complete` - Mark job as done (trigger payment).
 
 ### **Real-Time & Chat**
+
 - `GET /api/notifications` - Get list of alerts.
 - `POST /api/chat/rooms` - Create/Get chat room for a Job.
 - `POST /api/chat/messages` - Send a text/image message.
@@ -178,18 +190,21 @@ Our database is normalized for flexibility and scale.
 Follow these steps to run the full stack locally.
 
 ### 1. Prerequisites
+
 - Node.js (v16 or higher)
 - MongoDB (Local or Atlas URL)
 - Google Gemini API Key
 - Cloudinary Credentials (for image uploads)
 
 ### 2. Clone the Repo
+
 ```bash
 git clone https://github.com/KhadirShaikL21/worklink-smart-marketplace.git
 cd worklink-smart-marketplace
 ```
 
 ### 3. Backend Setup
+
 ```bash
 cd server
 npm install
@@ -205,23 +220,27 @@ npm install
 
 npm run dev
 ```
-*Server will run on http://localhost:5000*
+
+_Server will run on http://localhost:5000_
 
 ### 4. Frontend Setup
+
 ```bash
 cd ../client
 npm install
 npm run dev
 ```
-*Client will run on http://localhost:5173*
+
+_Client will run on http://localhost:5173_
 
 ---
 
 ## 🔮 Future Roadmap
+
 - [ ] Integration with WhatsApp Business API for notifications.
 - [ ] AR (Augmented Reality) measurement tool for workers.
 - [ ] Blockchain-based reputation system for verified reviews.
 
 ---
 
-*Winner Application - Problem Statement 7 - Full Stack Development*
+_Winner Application - Problem Statement 7 - Full Stack Development_
