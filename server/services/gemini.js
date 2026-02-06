@@ -1,69 +1,122 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from "@google/genai";
 import env from '../config/env.js';
+import { CUSTOMER_PROMPT, WORKER_PROMPT } from '../config/aiPrompts.js';
 
-const DEFAULT_MODEL = env.geminiModel || 'gemini-2.0-flash';
+// List of models to try in order of preference/stability
+// Updated based on available models for the key from check-models.js
+const MODELS_TO_TRY = [
+  'gemini-2.0-flash',
+  'gemini-2.0-flash-lite', 
+  'gemini-flash-latest',
+  'gemini-pro-latest'
+];
 
-function getModel() {
-  if (!env.geminiApiKey) {
-    return null;
+function getClient() {
+  if (!env.geminiApiKey) return null;
+  return new GoogleGenAI({ apiKey: env.geminiApiKey });
+}
+
+// Helper to confirm model availability with the new SDK
+async function generateWithFallback(operation) {
+  const ai = getClient();
+  if (!ai) throw new Error('Gemini API key missing');
+
+  let lastError = null;
+  // Filter out undefined models
+  const models = MODELS_TO_TRY.filter(Boolean);
+
+  for (const modelName of models) {
+    try {
+      // Pass the client and modelName to the operation
+      return await operation(ai, modelName);
+    } catch (err) {
+      const msg = err.message || '';
+      const status = err.status || err.statusCode;
+      
+      const isNotFound = msg.includes('404') || status === 404 || msg.includes('not found');
+      const isRateLimited = msg.includes('429') || status === 429 || msg.includes('quota') || msg.includes('Too Many Requests');
+
+      if (!isNotFound && !isRateLimited) {
+          console.error(`Gemini Error (${modelName}):`, msg);
+          throw err;
+      }
+      
+      if (isRateLimited) {
+        console.warn(`Gemini Model ${modelName} rate limited. Switching to next model...`);
+      }
+
+      lastError = err;
+      // Continue to next model
+    }
   }
-  const genAI = new GoogleGenerativeAI(env.geminiApiKey);
-  return genAI.getGenerativeModel({ model: DEFAULT_MODEL });
+  throw lastError || new Error('All Gemini models failed');
 }
 
 export async function generateStructuredJobDescription(prompt) {
   try {
-    const model = getModel();
-    if (!model) throw new Error('Gemini API key missing');
-    const response = await model.generateContent(prompt);
-    const text = response.response?.text?.() || response.response?.text || '';
-    return text;
-  } catch (err) {
-    console.error('Gemini structured generation failed, falling back:', err?.response?.data || err?.message || err);
-    const reason = err?.response?.data?.error?.message || err?.message || 'unknown error';
-    const quota = err?.response?.data?.error?.code === 429;
-    return JSON.stringify({
-      title: '',
-      category: 'General',
-      skills_required: [],
-      tasks: [],
-      hours_estimate: 1,
-      budget: { currency: 'INR', min: 0, max: 0 },
-      tools_required: [],
-      urgency: 'medium',
-      location_hint: '',
-      missing_fields: [],
-      clarifying_questions: quota ? ['Gemini quota exceeded; please retry later'] : ['AI service unavailable; please fill details manually'],
-      guidance: {
-        audience: 'customer',
-        posting_tips: ['Be specific about the task', 'Mention any tools provided'],
-        worker_notes: []
-      },
-      language: 'en',
-      debug_reason: `gemini-error: ${reason}`
+    const text = await generateWithFallback(async (ai, model) => {
+        const response = await ai.models.generateContent({
+            model: model,
+            contents: prompt, // Simple string content
+            config: {
+                responseMimeType: 'application/json' 
+            }
+        });
+        return response.text; 
     });
+    
+    // Clean up if the model returns markdown JSON despite mimeType
+    const cleaned = text && text.replace(/```json/g, '').replace(/```/g, '').trim();
+    return cleaned || '{}';
+  } catch (err) {
+    console.error('Gemini Structure Gen failed:', err);
+    return JSON.stringify({});
   }
 }
 
 export async function generateChatReply(message, context = {}) {
   try {
-    const model = getModel();
-    if (!model) throw new Error('Gemini API key missing');
-    const system = context.system || 'You are a helpful assistant for WorkLink users.';
-    const prompt = `${system}\nUser: ${message}\nAssistant:`;
-    const response = await model.generateContent(prompt);
-    const text = response.response?.text?.() || response.response?.text || '';
-    return text.trim();
+    const { role } = context; 
+    const systemPrompt = role === 'worker' ? WORKER_PROMPT : CUSTOMER_PROMPT;
+
+    const text = await generateWithFallback(async (ai, model) => {
+        // We will put the system instruction in the first user message 
+        // to be compatible with models that support it and those that don't (via prompt injection)
+        const response = await ai.models.generateContent({
+             model: model,
+             contents: [
+                 {
+                     role: 'user',
+                     parts: [{ text: `SYSTEM_INSTRUCTION: ${systemPrompt}\n\nUser: Hello, who are you?` }]
+                 },
+                 {
+                     role: 'model',
+                     parts: [{ text: role === 'worker' 
+                        ? "Namaste! I am the WorkLink Partner Support Assistant. I am here to help you get more jobs, understand the app, and earn better. Ask me anything in English, Hindi, or Telugu!" 
+                        : "Hello! I am your WorkLink Customer Assistant. I can help you post jobs, track workers, and manage payments. How can I assist you today?" 
+                    }]
+                 },
+                 {
+                     role: 'user',
+                     parts: [{ text: message }]
+                 }
+             ]
+        });
+        return response.text;
+    });
+
+    return text ? text.trim() : '';
+
   } catch (err) {
-    console.error('Gemini chat failed, falling back:', err?.response?.data || err?.message || err);
-    const reason = err?.response?.data?.error?.message || err?.message || 'unknown error';
-    const quota = err?.response?.data?.error?.code === 429;
-    if (quota) {
-      return 'AI temporarily paused: Gemini quota exceeded. Please retry in ~1 minute or switch to a paid key.';
+    console.error('Gemini Chat failed:', err);
+     const reason = err?.message || 'unknown error';
+    if (reason.includes('429') || reason.includes('quota')) {
+      return 'AI temporarily paused: Gemini quota exceeded. Please retry in ~1 minute.';
     }
     return `Sorry, the AI service is unavailable right now. (${reason})`;
   }
 }
+
 
 export function buildJobPrompt({ description, language = 'en', context = {}, audience = 'customer' }) {
   const { locationHint = '', budgetHint = '', urgencyHint = '' } = context;
