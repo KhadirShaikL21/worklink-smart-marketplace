@@ -1,0 +1,211 @@
+{
+	"info": {
+		"_postman_id": "worklink-api-collection",
+		"name": "WorkLink Smart Marketplace API",
+		"description": "Comprehensive API documentation for the WorkLink Full Stack Project. Validates Problem Statement 7 requirements including AI services, Geospatial queries, and Auth flows.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Register User (Customer)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"customer@example.com\",\n    \"password\": \"securePass123!\",\n    \"role\": \"customer\",\n    \"language\": \"en\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"customer@example.com\",\n    \"password\": \"securePass123!\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Get Current User Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/me",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "me"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🤖 AI Services",
+			"item": [
+				{
+					"name": "Chat with Assistant",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"message\": \"I need a plumber for a leaking tap\",\n    \"context\": \"user_location_context\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ai/chat",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ai", "chat"]
+						}
+					}
+				},
+				{
+					"name": "Generate Structured Job",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"prompt\": \"I need my house cleaned tomorrow evening\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/ai/job-assistant",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "ai", "job-assistant"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🛠️ Jobs Engine",
+			"item": [
+				{
+					"name": "Create Job",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Fix Kitchen Sink\",\n    \"description\": \"Leaking pipe under the sink\",\n    \"category\": \"Plumbing\",\n    \"budget\": 500,\n    \"location\": { \"type\": \"Point\", \"coordinates\": [78.4867, 17.3850] }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/jobs",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "jobs"]
+						}
+					}
+				},
+				{
+					"name": "Find Nearby Jobs (Geospatial)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/jobs/nearby?lat=17.3850&lng=78.4867&radius=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "jobs", "nearby"],
+							"query": [
+								{ "key": "lat", "value": "17.3850" },
+								{ "key": "lng", "value": "78.4867" },
+								{ "key": "radius", "value": "10" }
+							]
+						}
+					}
+				},
+				{
+					"name": "Verify Start with OTP",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"otp\": \"1234\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/jobs/{{jobId}}/verify-start",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "jobs", "{{jobId}}", "verify-start"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "💬 Chat & Messages",
+			"item": [
+				{
+					"name": "Send Message",
+					"request": {
+						"method": "POST",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" },
+							{ "key": "Authorization", "value": "Bearer {{token}}" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"jobId\": \"{{jobId}}\",\n    \"content\": \"I am on my way\",\n    \"type\": \"text\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/chat/messages",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "chat", "messages"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:5000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "YOUR_JWT_TOKEN_HERE",
+			"type": "string"
+		},
+		{
+			"key": "jobId",
+			"value": "YOUR_JOB_ID",
+			"type": "string"
+		}
+	]
+}
