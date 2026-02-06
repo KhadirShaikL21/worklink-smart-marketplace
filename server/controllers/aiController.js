@@ -34,10 +34,28 @@ export async function jobPostAssistant(req, res) {
 }
 
 export async function aiChat(req, res) {
-  const { message, context = {} } = req.body;
+  const { message } = req.body;
+  
   if (!message) return res.status(400).json({ message: 'message required' });
+
+  // Determine role from authenticated user
+  // This logic prioritizes 'worker' if they have the role, otherwise 'customer'
+  // In a real dual-role scenario, you might want to pass the current active Dashboard view from the frontend.
+  let role = 'customer';
+  // Check if req.user exists (set by auth middleware)
+  if (req.user && req.user.roles && req.user.roles.includes('worker')) {
+      // If user has 'worker' role, we assume they want worker support
+      // To strictly separate, we could check which page they are on via context
+      role = 'worker';
+  }
+
+  // If the user is specifically a customer (and not a worker), force customer prompt
+  if (req.user && req.user.roles && req.user.roles.includes('customer') && !req.user.roles.includes('worker')) {
+      role = 'customer';
+  }
+
   try {
-    const reply = await generateChatReply(message, context);
+    const reply = await generateChatReply(message, { role });
     return res.json({ reply });
   } catch (err) {
     console.error('Gemini chat error:', err?.response?.data || err?.message || err);

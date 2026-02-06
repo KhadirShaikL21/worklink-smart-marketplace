@@ -23,10 +23,10 @@
   - [x] Frontend: Implement audio recording logic.
   - [x] Backend: Handle audio file uploads (similar to image uploads).
   - [x] Frontend: Audio player component in chat bubbles.
-- [ ] **Multi-Language Support**
-  - [ ] Frontend: Install `i18next` or similar library.
-  - [ ] Frontend: Create translation files (English, Hindi).
-  - [ ] Frontend: Add Language Toggle in Navbar/Settings.
+- [x] **Multi-Language Support**
+  - [x] Frontend: Install `i18next` or similar library.
+  - [x] Frontend: Create translation files (English, Hindi).
+  - [x] Frontend: Add Language Toggle in Navbar/Settings.
 
 ## Phase 4: Enhanced Job Details
 
