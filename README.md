@@ -1,216 +1,227 @@
-# WorkLink Smart Marketplace
+# WorkLink - Smart AI-Powered Service Marketplace 🚀
 
-![Status](https://img.shields.io/badge/Status-Submission_Ready-success?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Submission_Ready-success?style=for-the-badge&logo=checkbox)
+![Stack](https://img.shields.io/badge/MERN-Full_Stack-61DAFB?style=for-the-badge&logo=react)
+![AI](https://img.shields.io/badge/AI-Gemini_2.0-8E75B2?style=for-the-badge&logo=google)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
-![Stack](https://img.shields.io/badge/MERN-Full_Stack-purple?style=for-the-badge)
 
 > **Submission for Problem Statement 7: Full Stack (Frontend + Backend) – End-to-End Web Application**  
-> _Target Problem: Bridging the digital divide for blue-collar workers through a secure, AI-powered on-demand marketplace._
+> *Theme: Bridging the digital divide for blue-collar workers through a secure, structured, and AI-enabled on-demand marketplace.*
+
+---
+
+## 📖 Table of Contents
+- [Project Overview](#-project-overview)
+- [System Architecture](#-system-architecture)
+- [Key Features](#-key-features)
+- [Tech Stack](#-tech-stack)
+- [API Documentation](#-api-documentation)
+- [Database Schema](#-database-schema)
+- [Installation & Setup](#-installation--setup)
+- [Troubleshooting](#-troubleshooting)
 
 ---
 
 ## 📖 Project Overview
 
-**WorkLink** is a comprehensive full-stack ecosystem designed to connect customers with skilled blue-collar workers (plumbers, electricians, cleaners, etc.) in real-time. Unlike simple listing sites, WorkLink serves as an end-to-end platform managing the entire lifecycle of a service request—from AI-assisted job posting and algorithm-based matching to live tracking, OTP security verification, and secure payments.
+**WorkLink** is a next-generation platform designed to organize the unorganized service sector. It connects customers with skilled local workers (plumbers, electricians, cleaners) through a seamless, real-time interface. 
 
-### Why Problem Statement 7?
+What makes WorkLink unique is its **AI-First approach**:
+1.  **For Workers:** An AI companion that speaks their language (literally - via Voice & Translation), helping them manage jobs and communicate professionally.
+2.  **For Customers:** An intelligent concierge that converts vague voice commands (e.g., "I need someone to fix my tap urgently") into structured job posts with categorized skills and budget estimates.
 
-This project demonstrates complete system thinking with a robust **Frontend** (React/Vite), complex **Backend** (Node/Express), **Database** (MongoDB), and critical integrations (Stripe, Socket.io, Gemini AI). It solves a messy real-world problem (unorganized labor) with a clean, digital solution.
+This project demonstrates a complete **System Thinking** approach, handling everything from the initial intent to the final secure payment.
 
 ---
 
 ## 🏗️ System Architecture
 
-The application follows a modular Monorepo structure separating the Client (UI) and Server (API).
+The application uses a reliable Monorepo structure (Client + Server).
 
 ```mermaid
 graph TD
-    User[User (Customer/Worker)]
-
-    subgraph Client [Frontend (React + Vite)]
-        Auth[Auth Context]
-        Pages[UI Pages]
-        SocketClient[Socket.io Client]
-        Maps[Leaflet Maps]
-        AIWidget[AI Voice Assistant]
+    subgraph Users
+        C["Customer"]
+        W["Worker"]
     end
 
-    subgraph Server [Backend (Node.js + Express)]
-        API[REST API Layer]
-        AuthService[Auth & JWT]
-        MatchingEngine[Matching Algorithm]
-        SocketServer[Real-time Events]
-        AIService[Gemini AI Service]
+    subgraph "Frontend (Client)"
+        UI["React + Vite UI"]
+        Voice["Web Speech API (Voice I/O)"]
+        Map["Leaflet Maps (Tracking)"]
+        SocketC["Socket.io Client"]
     end
 
-    subgraph Database
-        MongoDB[(MongoDB Atlas)]
+    subgraph "Backend (Server)"
+        API["Express REST API"]
+        Auth["JWT Auth Middleware"]
+        Match["Matching Engine"]
+        SocketS["Socket.io Server"]
     end
 
-    subgraph External_Services
-        Gemini[Google Gemini AI]
-        Stripe[Stripe Payments]
-        Cloudinary[Media Storage]
+    subgraph "Data & Services"
+        DB[("MongoDB Atlas")]
+        AI["Google Gemini AI"]
+        Pay["Stripe Payments"]
+        Cloud["Cloudinary Storage"]
     end
 
-    User --> Client
-    Client -->|REST API| Server
-    Client -->|WebSockets| SocketServer
-    Server --> MongoDB
-    Server --> Gemini
-    Server --> Stripe
-    Server --> Cloudinary
+    C & W --> UI
+    UI --> Voice
+    UI -->|REST Requests| API
+    UI <-->|Real-time Events| SocketS
+    API --> Auth
+    API --> Match
+    API --> DB
+    API --> AI
+    API --> Pay
+    API --> Cloud
 ```
-
----
-
-## 🔄 Core Workflows
-
-### 1. The "Happy Path" Service Loop
-
-1.  **Job Posting:** Customer uses the **AI Assistant** to draft a job description via voice or text.
-2.  **Matching:** The system scans for nearby online workers with matching skills.
-3.  **Acceptance:** Targeted workers receive real-time notifications.
-4.  **Live Tracking:** Once accepted, the customer can track the worker's location on the map.
-5.  **Security Handshake:**
-    - Worker arrives.
-    - Customer shares a **4-digit OTP**.
-    - Worker enters OTP to start the job timer.
-6.  **Payment:** Integrated Stripe escrow ensures the worker gets paid instantly upon completion.
 
 ---
 
 ## 🌟 Key Features
 
-### 🧠 Advanced AI Integration (Gemini 2.0)
+### 🧠 1. Voice-Enabled AI Assistant (Gemini 2.0)
+*   **Role-Aware Context:** The AI behaves differently based on who is logged in.
+    *   *Worker Mode:* Acts as a supervisor/coach. Mentors them on how to reply to customers.
+    *   *Customer Mode:* Acts as a service concierge. Helps draft job descriptions.
+*   **Voice-to-Voice:** Users can tap the microphone to speak, and the assistant replies with synthesized speech.
+*   **Auto-Healing:** Backend automatically switches between `gemini-2.0-flash`, `gemini-1.5-flash`, and other models if one fails or is rate-limited.
 
-- **Role-Aware Assistant:** context-switching AI that acts as "Partner Support" for workers (Language: Hinglish/Telugu) and "Concierge" for Customers.
-- **Voice Interface:** Built-in Speech-to-Text and Text-to-Speech for accessibility.
-- **Structure Generation:** Converts vague request ("tap leaking") into structured job posts (Title, Budget, Urgency).
+### 📍 2. Geospatial Matching & Live Tracking
+*   **Smart Matching:** Workers are filtered by **Skill Match** AND **Wait-time** AND **Distance** (using MongoDB `$near` queries).
+*   **Real-Time Map:** Customers can see the worker's live location approaching their house on a map (Leaflet.js) once a job is started.
 
-### 📍 Real-Time Capabilities
+### 🛡️ 3. Security & Trust Flow
+*   **OTP Verification:** A "Digital Handshake". The job timer *cannot* start until the worker enters the 4-digit OTP provided by the customer at the location.
+*   **Escrow Payments:** Funds are reserved via Stripe when a job is accepted but only released when the OTP verifies completion.
+*   **Encrypted Data:** Passwords hashed with Bcrypt, API communication secured with JWT.
 
-- **Socket.io:** Instant chat, job alerts, and status updates without refreshing.
-- **Live Maps:** Leaflet integration for tracking worker approach.
-
-### 🛡️ Security First
-
-- **OTP Verification:** Physical presence verification.
-- **JWT Authentication:** Secure stateless sessions.
-- **Data Validation:** Strict Input validation using `express-validator`.
-
----
-
-## 📂 Database Schema (MongoDB)
-
-| Collection         | Description                | Key Fields                                             |
-| :----------------- | :------------------------- | :----------------------------------------------------- |
-| **Users**          | Stores Auth & Profile data | `email`, `password`, `roles`, `isVerified`             |
-| **WorkerProfiles** | Specific worker details    | `skills`, `hourlyRate`, `location`, `availability`     |
-| **Jobs**           | Central job entity         | `title`, `status`, `customer`, `assignedWorker`, `otp` |
-| **ChatRooms**      | Messaging containers       | `participants`, `jobId`, `lastMessage`                 |
-| **Messages**       | Chat content               | `sender`, `content`, `type` (text/audio/image)         |
-| **Notifications**  | Activity log               | `recipient`, `type`, `readStatus`                      |
-
----
-
-## 🔌 API Documentation (Key Core Endpoints)
-
-### **Authentication**
-
-- `POST /api/auth/register` - Register new user (Customer/Worker).
-- `POST /api/auth/login` - Authenticate and receive JWT.
-- `POST /api/auth/verify-email` - OTP email verification.
-
-### **AI Assistant**
-
-- `POST /api/ai/chat` - Context-aware chat (Voice/Text).
-- `POST /api/ai/job-assistant` - Generate structured job JSON from intent.
-
-### **Jobs Marketplace**
-
-- `POST /api/jobs` - Create a new service request.
-- `GET /api/jobs/nearby` - Find jobs based on geospatial query.
-- `PATCH /api/jobs/:id/status` - Transition state (Start/Complete) with OTP.
-
-### **Real-time**
-
-- `GET /api/notifications` - Fetch user alerts.
-- `POST /api/chat/messages` - Send rich media messages.
+### 💬 4. Multi-Language Communication
+*   **Translation Layer:** UI supports English, Hindi (हिन्दी), and Telugu (తెలుగు).
+*   **Chat System:** Integrated text and image chat that allows structured negotiation without leaving the app.
 
 ---
 
 ## 💻 Tech Stack
 
-### **Frontend**
+### **Frontend (Client)**
+| Technology | Purpose |
+| :--- | :--- |
+| **React 18** | Component-based UI Architecture |
+| **Vite** | Lightning-fast build tool |
+| **Tailwind CSS** | Responsive styling system |
+| **Framer Motion** | Smooth UI transitions & animations |
+| **React Leaflet** | Interactive maps for location tracking |
+| **Socket.io Client** | Real-time bi-directional communication |
+| **Lucide React** | Modern, clean icon set |
 
-- **Framework:** React 18 + Vite
-- **Styling:** Tailwind CSS + Framer Motion (Animations)
-- **State:** React Context API + Custom Hooks
-- **Maps:** React-Leaflet
-- **Icons:** Lucide-React
-
-### **Backend**
-
-- **Runtime:** Node.js v18+
-- **Framework:** Express.js
-- **Database:** MongoDB (Mongoose ODM)
-- **Real-time:** Socket.io
-- **AI:** Google Generative AI SDK (`@google/genai`)
-- **Storage:** Cloudinary
+### **Backend (Server)**
+| Technology | Purpose |
+| :--- | :--- |
+| **Node.js** | JavaScript Runtime |
+| **Express.js** | REST API Framework |
+| **MongoDB (Mongoose)** | NoSQL Database for scalable data models |
+| **Google GenAI SDK** | Integration with Gemini Models |
+| **Socket.io** | WebSocket server for chat & notifications |
+| **Stripe** | Payment processing gateway |
+| **Multer / Cloudinary** | File upload and cloud storage |
 
 ---
 
-## 🚀 Setup & Installation
+## 🔌 API Documentation
 
-### Prerequisites
+### **Authentication**
+- `POST /api/auth/register` - Register a new User (Customer/Worker)
+- `POST /api/auth/login` - Login and receive `token`
+- `GET /api/auth/me` - Get current user profile (Protected)
 
-- Node.js v18+
-- MongoDB URI
+### **AI Services**
+- `POST /api/ai/chat` - Send a message to the AI Assistant.
+    - *Body:* `{ "message": "Help me find a plumber", "context": "..." }`
+- `POST /api/ai/job-assistant` - Parse natural language into structured Job JSON.
+
+### **Jobs Module**
+- `POST /api/jobs` - Create a new Service Request.
+- `GET /api/jobs/nearby` - Find jobs within X kilometers (Worker only).
+- `GET /api/jobs/:id` - Get full details of a specific job.
+- `PATCH /api/jobs/:id/bid` - Worker places a bid.
+- `PATCH /api/jobs/:id/assign` - Customer accepts a worker.
+- `PATCH /api/jobs/:id/verify-start` - Worker inputs OTP to start job.
+- `PATCH /api/jobs/:id/complete` - Mark job as done (trigger payment).
+
+### **Real-Time & Chat**
+- `GET /api/notifications` - Get list of alerts.
+- `POST /api/chat/rooms` - Create/Get chat room for a Job.
+- `POST /api/chat/messages` - Send a text/image message.
+
+---
+
+## 📂 Database Schema
+
+Our database is normalized for flexibility and scale.
+
+1.  **User**: Authenticaton details, roles (`customer`, `worker`), language preference.
+2.  **WorkerProfile**: Extends User. Stores `skills` (array), `hourlyRate`, `location` (GeoJSON), `metrics` (rating, jobs completed).
+3.  **Job**: The core entity. Links `customer` and `worker`.
+    - `status`: `OPEN`, `ASSIGNED`, `IN_PROGRESS`, `COMPLETED`, `PAID`.
+    - `location`: GeoJSON point.
+    - `verification`: Stores the generated OTP.
+4.  **ChatRoom**: Connects two users with a `jobId`.
+5.  **Notification**: Event-driven alerts (Job Accepted, Payment Received).
+
+---
+
+## 🚀 Installation & Setup
+
+Follow these steps to run the full stack locally.
+
+### 1. Prerequisites
+- Node.js (v16 or higher)
+- MongoDB (Local or Atlas URL)
 - Google Gemini API Key
-- Cloudinary Account
+- Cloudinary Credentials (for image uploads)
 
-### Steps
+### 2. Clone the Repo
+```bash
+git clone https://github.com/KhadirShaikL21/worklink-smart-marketplace.git
+cd worklink-smart-marketplace
+```
 
-1.  **Clone the Repository**
+### 3. Backend Setup
+```bash
+cd server
+npm install
 
-    ```bash
-    git clone https://github.com/KhadirShaikL21/worklink-smart-marketplace.git
-    cd worklink-smart-marketplace
-    ```
+# Create a .env file with the following:
+# PORT=5000
+# MONGODB_URI=your_mongo_url
+# JWT_SECRET=your_jwt_secret
+# GEMINI_API_KEY=your_google_ai_key
+# CLOUDINARY_CLOUD_NAME=...
+# CLOUDINARY_API_KEY=...
+# CLOUDINARY_API_SECRET=...
 
-2.  **Server Setup**
+npm run dev
+```
+*Server will run on http://localhost:5000*
 
-    ```bash
-    cd server
-    npm install
-    # Create .env based on example
-    npm run dev
-    ```
-
-3.  **Client Setup**
-
-    ```bash
-    cd ../client
-    npm install
-    npm run dev
-    ```
-
-4.  **Access App**
-    - Open `http://localhost:5173`
-    - **Customer Login:** `demo@customer.com` / `pass123`
-    - **Worker Login:** `demo@worker.com` / `pass123`
-
----
-
-## 📸 Project Quality & Evaluation
-
-This project meets the **problem statement criteria** by delivering:
-
-1.  **System Thinking:** A complete feedback loop between two distinct user types.
-2.  **API Design:** RESTful standards with secure, validated endpoints.
-3.  **Integration Quality:** Seamless blending of AI (Gemini) and Real-time (Socket.io) features into a practical workflow.
+### 4. Frontend Setup
+```bash
+cd ../client
+npm install
+npm run dev
+```
+*Client will run on http://localhost:5173*
 
 ---
 
-_Built for Hackathon Submission 2026_
+## 🔮 Future Roadmap
+- [ ] Integration with WhatsApp Business API for notifications.
+- [ ] AR (Augmented Reality) measurement tool for workers.
+- [ ] Blockchain-based reputation system for verified reviews.
+
+---
+
+*Winner Application - Problem Statement 7 - Full Stack Development*
