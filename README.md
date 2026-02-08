@@ -1,4 +1,4 @@
-# WorkLink - Smart AI-Powered Service Marketplace For Blue Collar Workers🚀
+# WorkLink - Smart AI-Powered Service Marketplace 🚀
 
 ![Status](https://img.shields.io/badge/Status-Submission_Ready-success?style=for-the-badge&logo=checkbox)
 ![Stack](https://img.shields.io/badge/MERN-Full_Stack-61DAFB?style=for-the-badge&logo=react)
