@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Briefcase, Lock, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare } from 'lucide-react';
+import { MapPin, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Briefcase, Lock, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare, Phone } from 'lucide-react';
 import PaymentModal from '../components/PaymentModal';
 import JobTrackingMap from '../components/JobTrackingMap';
 import { JobDetailSkeleton } from '../components/ui/Skeleton.jsx';
@@ -26,6 +26,8 @@ export default function JobDetail() {
   // Payment states
   const [clientSecret, setClientSecret] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [timerExpired, setTimerExpired] = useState(false);
 
   const formatDateTime = value => {
     if (!value) return '—';
@@ -117,6 +119,44 @@ export default function JobDetail() {
       // Reload job to get updated status
       setTimeout(() => load(), 1000); // Small delay to allow webhook to process
   };
+
+  const handleAcceptJob = async () => {
+    try {
+      await api.post(`/api/jobs/${jobId}/accept`);
+      setStatusMsg('Job Accepted! Please proceed to location.');
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to accept job');
+    }
+  };
+
+  const handleSecureCall = () => {
+    alert('Initiating secure privacy-preserving call via WorkLink Server... Connecting *******' + (jobRole === 'customer' ? '987' : '123'));
+  };
+
+  const getDirections = () => {
+    if (job?.location?.coordinates) {
+      const [long, lat] = job.location.coordinates;
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${long}`, '_blank');
+    }
+  };
+
+  useEffect(() => {
+    let interval;
+    // Only run timer if status is 'assigned' (pending acceptance)
+    if (job?.status === 'assigned' && isAssignedWorker && !timerExpired && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            setTimerExpired(true);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [job, isAssignedWorker, timerExpired, timeLeft]);
 
   const startJob = async (e) => {
     e.preventDefault();
@@ -318,28 +358,88 @@ export default function JobDetail() {
           </div>
 
           {!isCompleted && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <div className="flex justify-between items-center mb-4">
+            <div className="bg-white rounded-xl shadow-sm border mb-6 border-gray-100 p-6">
+              <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                 <h3 className="text-lg font-medium text-gray-900 flex items-center">
                   <MapPin className="w-5 h-5 mr-2 text-primary-600" />
-                  Live Location Tracking
+                  {job.status === 'assigned' ? 'Job Status' : 'Live Location Tracking'}
                 </h3>
+
+                {/* Worker: Accept Status */}
                 {isAssignedWorker && job.status === 'assigned' && (
-                  <button
-                    onClick={startTravel}
-                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                   <div className="flex items-center gap-3">
+                      <div className={`text-sm font-bold flex items-center ${timeLeft < 20 ? 'text-red-600 animate-pulse' : 'text-gray-700'}`}>
+                        <Clock className="w-4 h-4 mr-1" />
+                        {timerExpired ? 'Expired' : `${timeLeft}s remaining`}
+                      </div>
+                      <button
+                        onClick={handleAcceptJob}
+                        disabled={timerExpired}
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+                      >
+                        Accept Work
+                      </button>
+                   </div>
+                )}
+                
+                {/* Customer: Waiting Status */}
+                {isCustomer && job.status === 'assigned' && (
+                   <span className="text-sm font-medium text-orange-600 animate-pulse flex items-center">
+                     <Clock className="w-4 h-4 mr-1" />
+                     Waiting for worker to accept...
+                   </span>
+                )}
+
+                {/* Worker: Actions after acceptance */}
+                {isAssignedWorker && (job.status === 'accepted' || job.status === 'en_route') && (
+                  <div className="flex gap-2">
+                     <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${job.location?.coordinates?.[1]},${job.location?.coordinates?.[0]}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                      >
+                        <MapPin className="w-4 h-4 mr-2" />
+                        Get Directions
+                      </a>
+                      <button
+                        onClick={handleSecureCall}
+                        className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+                      >
+                        <Phone className="w-4 h-4 mr-2" />
+                        Secure Call
+                      </button>
+                      {job.status === 'accepted' && (
+                        <button
+                          onClick={startTravel}
+                          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Navigation className="w-4 h-4 mr-2" />
+                          Start Travel
+                        </button>
+                      )}
+                  </div>
+                )}
+                
+                {/* Customer: Call Worker */}
+                {isCustomer && (job.status === 'accepted' || job.status === 'en_route' || job.status === 'in_progress') && (
+                   <button
+                    onClick={handleSecureCall}
+                    className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
                   >
-                    <Navigation className="w-4 h-4 mr-2" />
-                    Start Travel
+                    <Phone className="w-4 h-4 mr-2" />
+                    Call Worker
                   </button>
                 )}
+
                 {job.status === 'en_route' && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 animate-pulse">
                     Worker En Route
                   </span>
                 )}
               </div>
-              <JobTrackingMap job={job} userRole={jobRole} />
+              {/* Only show map if NOT assigned (i.e. accepted/en_route) */}
+              {job.status !== 'assigned' && <JobTrackingMap job={job} userRole={jobRole} />}
             </div>
           )}
 
@@ -641,7 +741,7 @@ export default function JobDetail() {
         {/* Sidebar */}
         <div className="space-y-6">
           {/* OTP Section */}
-          {(job.status === 'assigned' || job.status === 'en_route') && (
+          {(job.status === 'accepted' || job.status === 'en_route') && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
                 <Lock className="w-5 h-5 mr-2 text-primary-600" />

@@ -300,6 +300,38 @@ export async function listMyJobs(req, res) {
   return res.json({ jobs });
 }
 
+export async function acceptJob(req, res) {
+  const { jobId } = req.params;
+  const job = await Job.findById(jobId);
+  if (!job) return res.status(404).json({ message: 'Job not found' });
+
+  // Check if user is an assigned worker
+  const isAssigned = job.assignedWorkers.some(w => w.toString() === req.user._id.toString());
+  if (!isAssigned) {
+    return res.status(403).json({ message: 'Only assigned workers can accept the job' });
+  }
+
+  if (job.status !== 'assigned') {
+    return res.status(400).json({ message: `Job is already ${job.status}` });
+  }
+
+  job.status = 'accepted';
+  job.timeline = job.timeline || {};
+  job.timeline.acceptedAt = new Date(); // You might want to add acceptedAt to Job schema timeline or just use updatedAt
+  await job.save();
+
+  // Notify Customer
+  await notify({
+    userId: job.customer,
+    type: 'job_update',
+    title: 'Job Accepted',
+    body: `Worker has accepted the job assignment.`,
+    metadata: { jobId: job._id }
+  });
+
+  return res.json({ message: 'Job accepted', job });
+}
+
 export async function startTravel(req, res) {
   const { jobId } = req.params;
   const job = await Job.findById(jobId);
@@ -311,7 +343,7 @@ export async function startTravel(req, res) {
     return res.status(403).json({ message: 'Only assigned workers can start travel' });
   }
 
-  if (job.status !== 'assigned') {
+  if (job.status !== 'assigned' && job.status !== 'accepted') {
     return res.status(400).json({ message: `Job is already ${job.status}` });
   }
 
@@ -345,7 +377,7 @@ export async function verifyStartOtp(req, res) {
     return res.status(403).json({ message: 'Only assigned workers can start the job' });
   }
 
-  if (job.status !== 'assigned' && job.status !== 'en_route') {
+  if (job.status !== 'assigned' && job.status !== 'en_route' && job.status !== 'accepted') {
     return res.status(400).json({ message: `Job is already ${job.status}` });
   }
 

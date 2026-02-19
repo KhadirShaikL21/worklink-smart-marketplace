@@ -30,10 +30,10 @@
 
 ## Phase 4: Enhanced Job Details
 
-- [ ] **Video Upload for Jobs**
-  - [ ] Backend: Update `uploadController` to accept video mime types.
-  - [ ] Frontend: Update `JobCreate` form to accept video files.
-  - [ ] Frontend: Add Video Player in `JobDetail` page.
+- [x] **Video Upload for Jobs**
+  - [x] Backend: Update `uploadController` to accept video mime types.
+  - [x] Frontend: Update `JobCreate` form to accept video files.
+  - [x] Frontend: Add Video Player in `JobDetail` page.
 
 ## Phase 5: Future Enhancements (Backlog)
 

@@ -1,15 +1,77 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../utils/api';
-import { Sparkles, Send, Loader2, Globe, User, FileText, CheckCircle2, Clock, IndianRupee, Hammer } from 'lucide-react';
+import { Sparkles, Send, Loader2, Globe, User, FileText, CheckCircle2, Clock, IndianRupee, Hammer, Mic, MicOff } from 'lucide-react';
 import clsx from 'clsx';
+import { toast } from 'react-hot-toast';
 
 export default function Assistant() {
+  const navigate = useNavigate();
   const [description, setDescription] = useState('Fix leaking bathroom tap and check water heater.');
   const [language, setLanguage] = useState('en');
   const [audience, setAudience] = useState('customer');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Voice Recognition State
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.error('Voice input is not supported in this browser.');
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    // Set language based on selection
+    const langMap = {
+      'en': 'en-IN', // Use Indian English for better accent recognition
+      'hi': 'hi-IN',
+      'te': 'te-IN'
+    };
+    recognition.lang = langMap[language] || 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setError('');
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      if (transcript) {
+        setDescription(prev => prev === 'Fix leaking bathroom tap and check water heater.' ? transcript : prev + ' ' + transcript);
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error', event.error);
+      setIsListening(false);
+      if (event.error === 'not-allowed') {
+        setError('Microphone access denied. Please allow permission.');
+      } else {
+        setError('Voice recognition failed. Please try again.');
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  };
 
   const onSubmit = async e => {
     e.preventDefault();
@@ -28,10 +90,53 @@ export default function Assistant() {
 
   const JobPreview = ({ data }) => {
     if (!data) return null;
-    const isRaw = typeof data === 'string';
-    const job = isRaw ? null : data;
+    let job = data;
+    let isRaw = typeof data === 'string';
 
-    if (isRaw) return <div className="p-4 whitespace-pre-wrap text-sm text-gray-700">{data}</div>;
+    // Try parsing if raw string
+    if (isRaw) {
+      try {
+        let clean = data.trim();
+        // Remove markdown code blocks
+        clean = clean.replace(/```json/g, '').replace(/```/g, '');
+        
+        // Find JSON block: first { and last }
+        const firstBrace = clean.indexOf('{');
+        const lastBrace = clean.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1) {
+          // Sometimes models output extra braces or text after. 
+          // We will try to parse from the first { to the last }.
+          // If that fails, we can try to walk backwards from end to find the valid JSON end.
+          const jsonPotential = clean.substring(firstBrace, lastBrace + 1);
+          try {
+             job = JSON.parse(jsonPotential);
+             isRaw = false;
+          } catch(e) {
+             // If parsing failed, maybe there are extra closing braces (e.g. "}}")
+             // Try removing last character if it is '}'
+             if (jsonPotential.endsWith('}}')) {
+                const fixed = jsonPotential.slice(0, -1);
+                job = JSON.parse(fixed);
+                isRaw = false;
+             } else {
+                throw e;
+             }
+          }
+        }
+      } catch (e) {
+        // Parsing failed, stick to raw string
+        console.warn("JSON Parse failed", e);
+        isRaw = true;
+      }
+    }
+
+    if (isRaw) return (
+      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <h4 className="text-sm font-semibold text-gray-700 mb-2">Raw Output (Could not format)</h4>
+        <pre className="whitespace-pre-wrap text-xs text-gray-600 font-mono overflow-auto max-h-96">{data}</pre>
+      </div>
+    );
 
     return (
       <div className="space-y-6">
@@ -44,8 +149,8 @@ export default function Assistant() {
           </div>
           <div className="flex flex-col items-end">
              <span className={clsx("px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide", 
-               job.urgency === 'emergency' ? "bg-red-100 text-red-700" :
-               job.urgency === 'high' ? "bg-orange-100 text-orange-700" :
+               job.urgency?.toLowerCase() === 'emergency' ? "bg-red-100 text-red-700" :
+               job.urgency?.toLowerCase() === 'high' ? "bg-orange-100 text-orange-700" :
                "bg-green-100 text-green-700"
              )}>
                {job.urgency || 'Standard'}
@@ -54,12 +159,12 @@ export default function Assistant() {
         </div>
 
         {/* Worker Brief or Summary */}
-        {(job.worker_brief?.job_summary) && (
+        {(job.worker_brief?.job_summary || job.description) && (
           <div className="bg-primary-50 p-4 rounded-lg border border-primary-100">
             <h4 className="text-sm font-semibold text-primary-900 mb-1 flex items-center gap-2">
               <Sparkles className="w-4 h-4" /> Summary
             </h4>
-            <p className="text-sm text-primary-800 leading-relaxed">{job.worker_brief.job_summary}</p>
+            <p className="text-sm text-primary-800 leading-relaxed">{job.worker_brief?.job_summary || job.description}</p>
           </div>
         )}
 
@@ -80,14 +185,16 @@ export default function Assistant() {
             <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-gray-500" /> Tasks
             </h4>
-            <ul className="space-y-2">
-              {job.tasks?.map((task, i) => (
-                <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
-                  {task}
-                </li>
-              ))}
-            </ul>
+            {job.tasks && job.tasks.length > 0 ? (
+              <ul className="space-y-2">
+                {job.tasks.map((task, i) => (
+                  <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gray-400 flex-shrink-0" />
+                    {task}
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-sm text-gray-400 italic">No specific tasks listed</p>}
           </div>
           
           <div>
@@ -105,6 +212,9 @@ export default function Assistant() {
                   {tool}
                 </span>
               ))}
+              {(!job.skills_required?.length && !job.tools_required?.length) && 
+                <p className="text-sm text-gray-400 italic">No specific requirements</p>
+              }
             </div>
           </div>
         </div>
@@ -117,7 +227,7 @@ export default function Assistant() {
                </div>
                <div>
                  <p className="text-xs text-gray-500">Estimated Budget</p>
-                 <p className="font-semibold text-gray-900">₹{job.budget.min} - ₹{job.budget.max}</p>
+                 <p className="font-semibold text-gray-900">₹{job.budget.min || 0} - ₹{job.budget.max || 0}</p>
                </div>
              </div>
            )}
@@ -133,6 +243,19 @@ export default function Assistant() {
              </div>
            )}
         </div>
+        
+        {/* POST JOB BUTTON (Inside Preview) */}
+        {audience === 'customer' && (
+          <div className="mt-8 pt-4 border-t border-gray-100 flex justify-end w-full">
+              <button
+              onClick={() => navigate('/jobs/new', { state: { jobData: job } })} // Use parsed 'job' object
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium shadow-sm transition-colors text-lg"
+            >
+              <CheckCircle2 className="w-6 h-6" />
+              Use This to Create Job
+            </button>
+          </div>
+        )}
       </div>
     );
   };
@@ -159,17 +282,39 @@ export default function Assistant() {
           
           <form onSubmit={onSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Describe the job
+              <label className="block text-sm font-medium text-gray-700 mb-2 flex justify-between items-center">
+                <span>Describe the job</span>
+                {isListening && <span className="text-red-600 animate-pulse text-xs font-semibold">● Recording...</span>}
               </label>
-              <textarea
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={6}
-                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 resize-none"
-                placeholder="e.g., I need someone to paint my living room walls..."
-                required
-              />
+              <div className="relative">
+                <textarea
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  rows={6}
+                  className={clsx(
+                    "w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 resize-none pr-12",
+                    isListening && "ring-2 ring-red-500 border-red-500 bg-red-50"
+                  )}
+                  placeholder="Tap the mic and speak..."
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={isListening ? stopListening : startListening}
+                  className={clsx(
+                    "absolute right-3 top-3 p-2 rounded-full transition-all shadow-sm",
+                    isListening 
+                      ? "bg-red-600 text-white hover:bg-red-700 animate-pulse" 
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  )}
+                  title={isListening ? "Stop Recording" : "Start Voice Input"}
+                >
+                  {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Supports English, Hindi, and Telugu.
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -239,7 +384,7 @@ export default function Assistant() {
           </h2>
           
           {result ? (
-            <div className="flex-1 overflow-auto rounded-lg">
+            <div className="flex-1 overflow-auto rounded-lg flex flex-col">
               <JobPreview data={result.structured || result.raw} />
             </div>
           ) : (

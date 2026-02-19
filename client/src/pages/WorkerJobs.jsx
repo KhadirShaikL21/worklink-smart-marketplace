@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../utils/api';
-import { Briefcase, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Briefcase, AlertCircle, CheckCircle, Clock, Search } from 'lucide-react';
 import { JobCardSkeleton } from '../components/ui/Skeleton.jsx';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
@@ -43,6 +43,13 @@ export default function WorkerJobs() {
           <h1 className="text-3xl font-bold text-gray-900">{t('myJobs.title')}</h1>
           <p className="text-gray-500 mt-1">{t('myJobs.subtitle')}</p>
         </div>
+        <Link 
+            to="/find-work" 
+            className="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-lg font-medium text-white hover:bg-primary-700 shadow-sm transition-colors text-sm"
+        >
+            <Search className="w-4 h-4 mr-2" />
+            Find New Work
+        </Link>
       </div>
 
       {/* Tabs */}

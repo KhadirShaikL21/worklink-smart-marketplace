@@ -97,7 +97,12 @@ graph TD
 - **Smart Matching:** Workers are filtered by **Skill Match** AND **Wait-time** AND **Distance** (using MongoDB `$near` queries).
 - **Real-Time Map:** Customers can see the worker's live location approaching their house on a map (Leaflet.js) once a job is started.
 
-### 🛡️ 3. Security & Trust Flow
+### 🎥 3. Video Descriptions & Proof
+
+- **Visual Problem Statement:** Customers can record and upload a 15-second video explaining the issue (e.g., leaking pipe), giving workers better context before accepting.
+- **Completion Proof:** Workers must upload 3 photos as proof of work before marking the job as complete.
+
+### 🛡️ 4. Security & Trust Flow
 
 - **OTP Verification:** A "Digital Handshake". The job timer _cannot_ start until the worker enters the 4-digit OTP provided by the customer at the location.
 - **Escrow Payments:** Funds are reserved via Stripe when a job is accepted but only released when the OTP verifies completion.

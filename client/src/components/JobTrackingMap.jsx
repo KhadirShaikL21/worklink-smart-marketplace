@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useSocket } from '../context/SocketContext';
@@ -118,6 +118,16 @@ export default function JobTrackingMap({ job, userRole }) {
                 Currently here
               </Popup>
             </Marker>
+            
+            {/* Draw Line between Worker and Job */}
+            <Polyline 
+              positions={[workerLocation, jobLocation]} 
+              color="#2563eb" 
+              weight={4} 
+              opacity={0.8} 
+              dashArray="10, 10" 
+            />
+            
             {/* Auto-center map on worker if user is customer */}
              {userRole === 'customer' && <RecenterMap position={workerLocation} />}
           </>

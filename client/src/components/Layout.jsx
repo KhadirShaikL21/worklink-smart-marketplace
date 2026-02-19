@@ -11,6 +11,7 @@ import {
   Home, LogOut, Search, Sparkles 
 } from 'lucide-react';
 import clsx from 'clsx';
+import { Toaster } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 export default function Layout() {
@@ -21,20 +22,24 @@ export default function Layout() {
   const { t } = useTranslation();
 
   const navigation = [
-    { name: t('nav.home'), href: '/', icon: Home },
+    { name: 'Home', href: '/', icon: Home },
+    // Simplified Worker Navigation
     ...(user?.roles?.includes('worker') 
       ? [
-          { name: t('nav.findWork'), href: '/find-work', icon: Search },
-          { name: t('nav.myJobs'), href: '/worker-jobs', icon: Briefcase }
+          // Consolidate "Find Work" and "My Tasks" into "Jobs"
+          { name: 'Jobs', href: '/worker-jobs', icon: Briefcase } 
         ] 
       : []
     ),
     ...(user?.roles?.includes('customer')
-      ? [{ name: t('nav.jobs'), href: '/jobs', icon: Briefcase }]
+      ? [
+          { name: 'My Jobs', href: '/jobs', icon: Briefcase }
+      ]
       : []
     ),
-    { name: t('nav.workers'), href: '/workers', icon: Search },
-    { name: t('nav.assistant'), href: '/assistant', icon: Sparkles },
+    { name: 'Workers', href: '/workers', icon: User },
+    // Moved Assistant into a more subtle position or keep it concise
+     { name: 'Assistant', href: '/assistant', icon: Sparkles },
   ];
 
   const userNavigation = [
@@ -44,6 +49,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+      <Toaster position="top-right" />
       {/* Navbar */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,21 +65,21 @@ export default function Layout() {
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex space-x-8">
+            <nav className="hidden md:flex space-x-6">
               {navigation.map((item) => (
                 <NavLink
                   key={item.name}
                   to={item.href}
                   className={({ isActive }) =>
                     clsx(
-                      'inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 transition-colors duration-200',
+                      'inline-flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200',
                       isActive
-                        ? 'border-primary-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     )
                   }
                 >
-                  <item.icon className="w-4 h-4 mr-2" />
+                  <item.icon className="w-4 h-4" />
                   {item.name}
                 </NavLink>
               ))}

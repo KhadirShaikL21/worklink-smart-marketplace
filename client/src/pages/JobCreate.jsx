@@ -1,15 +1,50 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../utils/api';
-import { Sparkles, Save, ArrowRight, Loader2, AlertCircle, CheckCircle2, Video } from 'lucide-react';
+import { Sparkles, Save, ArrowRight, Loader2, AlertCircle, CheckCircle2, Video, MapPin, Crosshair } from 'lucide-react';
 import clsx from 'clsx';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-shadow.png',
+});
+
+function LocationMarker({ position, setPosition }) {
+    const map = useMapEvents({
+      click(e) {
+        setPosition(e.latlng);
+        // map.flyTo(e.latlng, map.getZoom());
+      },
+    });
+  
+    useEffect(() => {
+        if(position) {
+            map.flyTo(position, map.getZoom());
+        }
+    }, [position, map]);
+  
+    return position === null ? null : (
+      <Marker position={position}></Marker>
+    );
+  }
 
 export default function JobCreate() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [description, setDescription] = useState('Bathroom renovation: fix leak, retile floor, check wiring.');
   const [language, setLanguage] = useState('en');
   const [assistant, setAssistant] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
+  
+  const [mapPosition, setMapPosition] = useState({lat: 20.5937, lng: 78.9629}); // Default India
+  const [loadingLocation, setLoadingLocation] = useState(true);
+
   const [form, setForm] = useState({
     title: '',
     category: '',
@@ -26,6 +61,64 @@ export default function JobCreate() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
+  // Sync map position with form state when map changes
+  useEffect(() => {
+     if (mapPosition) {
+         setForm(f => ({...f, lat: mapPosition.lat, lng: mapPosition.lng}));
+     }
+  }, [mapPosition]);
+  
+  const getCurrentLocation = () => {
+      setLoadingLocation(true);
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(function(position) {
+          setMapPosition({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+          });
+          setLoadingLocation(false);
+        }, function(error) {
+            console.error("Error Code = " + error.code + " - " + error.message);
+            setLoadingLocation(false);
+            // Default to India center if permission denied
+            setMapPosition({lat: 20.5937, lng: 78.9629});
+        });
+      } else {
+        setLoadingLocation(false);
+      }
+  };
+
+  // On Mount, try to get location
+  useEffect(() => {
+      getCurrentLocation();
+  }, []);
+
+  // Prefill from AI Assistant
+  useEffect(() => {
+    if (location.state?.jobData) {
+      const { jobData } = location.state;
+      setForm(f => ({
+        ...f,
+        title: jobData.title || 'New Job Request',
+        category: jobData.category || 'General',
+        skillsRequired: (jobData.skills_required || ['General Help']).join(', '),
+        tasks: (jobData.tasks || []).join('\n') || 'General assistance required',
+        hoursEstimate: jobData.hours_estimate || '1',
+        budgetMin: jobData.budget?.min || '500', 
+        budgetMax: jobData.budget?.max || '1000',
+        urgency: jobData.urgency?.toLowerCase() || 'medium',
+        workersNeeded: jobData.workers_needed || 1
+      }));
+      
+      // Handle description mapping
+      if (jobData.worker_brief?.job_summary) {
+        setDescription(jobData.worker_brief.job_summary);
+      } else if (jobData.description) {
+        setDescription(jobData.description);
+      }
+    }
+  }, [location.state]);
 
   const runAssistant = async () => {
     setLoading(true);
@@ -188,6 +281,50 @@ export default function JobCreate() {
         <div className="lg:col-span-2">
           <form onSubmit={onSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Location <span className="text-red-500">*</span>
+                </label>
+                <div className="h-64 sm:h-80 w-full rounded-lg border border-gray-300 overflow-hidden relative z-0 mb-2">
+                    {loadingLocation && (
+                        <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+                        </div>
+                    )}
+                    {/* Render Map only when mapPosition is available (even default) */}
+                    {mapPosition ? (
+                       <MapContainer 
+                         center={mapPosition} 
+                         zoom={10} 
+                         scrollWheelZoom={true} 
+                         style={{ height: '100%', width: '100%' }}
+                       >
+                         <TileLayer
+                           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                         />
+                         <LocationMarker position={mapPosition} setPosition={setMapPosition} />
+                       </MapContainer>
+                    ) : (
+                        <div className="h-full w-full bg-gray-100 flex items-center justify-center text-gray-500">
+                             Map Loading...
+                        </div>
+                    )}
+                    
+                    <button 
+                      type="button" 
+                      onClick={() => getCurrentLocation()}
+                      className="absolute bottom-4 right-4 z-[400] bg-white p-2 rounded-full shadow-md hover:bg-gray-50 border border-gray-200"
+                      title="Use My Location"
+                    >
+                        <Crosshair className="w-5 h-5 text-gray-700" />
+                    </button>
+                </div>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> Tap on map to pinpoint exact job location
+                </p>
+              </div>
+
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
                 <input
