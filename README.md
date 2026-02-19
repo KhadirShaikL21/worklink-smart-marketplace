@@ -5,7 +5,7 @@
 ![AI](https://img.shields.io/badge/AI-Gemini_2.0-8E75B2?style=for-the-badge&logo=google)
 ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
-> **Submission for Problem Statement 7: Full Stack (Frontend + Backend) – End-to-End Web Application**  
+> **Submission for Problem Statement 7: Full Stack (Frontend + Backend) – End-to-End Web Application using ai**  
 > _Theme: Bridging the digital divide for blue-collar workers through a secure, structured, and AI-enabled on-demand marketplace._
 
 ---
