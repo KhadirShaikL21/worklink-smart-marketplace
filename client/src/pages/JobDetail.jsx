@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Briefcase, Lock, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare, Phone } from 'lucide-react';
+import { MapPin, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Briefcase, Lock, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare, Phone, ShieldAlert } from 'lucide-react';
 import PaymentModal from '../components/PaymentModal';
 import JobTrackingMap from '../components/JobTrackingMap';
-import { JobDetailSkeleton } from '../components/ui/Skeleton.jsx';
+import { JobDetailSkeleton } from '../components/ui/Skeleton';
 
 export default function JobDetail() {
   const { user } = useAuth();
@@ -28,6 +28,20 @@ export default function JobDetail() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
   const [timerExpired, setTimerExpired] = useState(false);
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('Payment Issue');
+  const [disputeDesc, setDisputeDesc] = useState('');
+
+  // Derived state calculations need to be hoisted or safe-guarded
+  const currentUserId = user?._id?.toString();
+  const customerId = job && (job.customer?._id || job.customer)?.toString();
+  // Safe filtering for assigned workers
+  const assignedWorkers = job ? (job.assignedWorkers || []).filter(w => w && (w._id || w)) : [];
+  const assignedWorkerIds = assignedWorkers.map(w => (w._id || w).toString());
+  
+  const isCustomer = !!currentUserId && !!customerId && customerId === currentUserId;
+  const isAssignedWorker = !!currentUserId && assignedWorkerIds.includes(currentUserId);
+  const jobRole = isCustomer ? 'customer' : 'worker';
 
   const formatDateTime = value => {
     if (!value) return '—';
@@ -99,6 +113,22 @@ export default function JobDetail() {
       setRating(r => ({ ...r, review: '' }));
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to rate');
+    }
+  };
+
+  const handleRaiseDispute = async (e) => {
+    e.preventDefault();
+    try {
+      if (!disputeDesc.trim()) {
+        setError('Please provide a description for the dispute.');
+        return;
+      }
+      await api.post(`/api/jobs/${jobId}/dispute`, { reason: disputeReason, description: disputeDesc });
+      setStatusMsg('Dispute raised successfully. Our support team will contact you.');
+      setShowDisputeModal(false);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to raise dispute');
     }
   };
 
@@ -182,6 +212,27 @@ export default function JobDetail() {
     }
   };
 
+  const markArrived = async () => {
+    try {
+      await api.post(`/api/jobs/${jobId}/arrived`);
+      setStatusMsg('Marked as Arrived! Customer notified.');
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to mark arrival');
+    }
+  };
+
+  const handleSOS = async () => {
+    if (!window.confirm('EMERGENCY: Do you want to trigger SOS? This will alert admins and emergency contacts.')) return;
+    try {
+      await api.post(`/jobs/${jobId}/sos`, {});
+      alert('SOS Signal Sent! Emergency contacts notified.');
+    } catch (err) {
+      console.error(err);
+      alert('Error sending SOS. Please call emergency services directly.');
+    }
+  };
+
   const handleCompleteJob = async (e) => {
     e.preventDefault();
     if (photoFiles.some(f => !f)) {
@@ -224,49 +275,62 @@ export default function JobDetail() {
   if (!job) return <JobDetailSkeleton />;
 
   const isCompleted = job.status === 'completed';
-  const assignedWorkers = job.assignedWorkers || [];
-  const assignedWorkerIds = assignedWorkers.map(w => (w._id || w).toString());
-  const currentUserId = user?._id?.toString();
-  const customerId = (job.customer?._id || job.customer)?.toString();
-  const isCustomer = customerId === currentUserId;
-  const isAssignedWorker = assignedWorkerIds.includes(currentUserId || '');
-  const jobRole = isCustomer ? 'customer' : 'worker';
+  
   const timeline = job.timeline || {};
   const summary = job.summary || {};
-  const payment = job.payment;
+  const payment = job.payment; // Keep undefined if missing
   const completionProof = job.completionProof || {};
-  const toDate = value => (value ? new Date(value) : null);
+  const toDate = value => {
+    if (!value) return null;
+    try {
+      return new Date(value);
+    } catch {
+      return null;
+    }
+  };
   const assignedAtDate = toDate(timeline.assignedAt) || (job.status !== 'open' ? toDate(job.createdAt) : null);
   const completedAtDate = toDate(timeline.completedAt) || (job.status === 'completed' ? toDate(job.updatedAt) : null);
-  const inferredStartedFromWork = completedAtDate && typeof summary.workDurationMinutes === 'number'
-    ? new Date(completedAtDate.getTime() - summary.workDurationMinutes * 60000)
+  
+  // Safe date operations
+  const safeTime = (date) => (date instanceof Date && !isNaN(date) ? date.getTime() : 0);
+  const isValidDate = (date) => date instanceof Date && !isNaN(date);
+
+  const inferredStartedFromWork = isValidDate(completedAtDate) && typeof summary.workDurationMinutes === 'number'
+    ? new Date(safeTime(completedAtDate) - summary.workDurationMinutes * 60000)
     : null;
+    
   const startedAtDate = toDate(timeline.startedAt)
     || inferredStartedFromWork
     || ((job.status === 'in_progress' || job.status === 'completed') ? toDate(job.updatedAt) : null);
-  const inferredTravelFromSummary = startedAtDate && typeof summary.travelDurationMinutes === 'number'
-    ? new Date(startedAtDate.getTime() - summary.travelDurationMinutes * 60000)
+    
+  const inferredTravelFromSummary = isValidDate(startedAtDate) && typeof summary.travelDurationMinutes === 'number'
+    ? new Date(safeTime(startedAtDate) - summary.travelDurationMinutes * 60000)
     : null;
+    
   const travelStartedAtDate = toDate(timeline.travelStartedAt) || inferredTravelFromSummary;
+  
   const travelDurationMinutes = typeof summary.travelDurationMinutes === 'number'
     ? summary.travelDurationMinutes
-    : (travelStartedAtDate && startedAtDate
-        ? Math.max(0, Math.round((startedAtDate.getTime() - travelStartedAtDate.getTime()) / 60000))
+    : (isValidDate(travelStartedAtDate) && isValidDate(startedAtDate)
+        ? Math.max(0, Math.round((safeTime(startedAtDate) - safeTime(travelStartedAtDate)) / 60000))
         : null);
+        
   const workDurationMinutes = typeof summary.workDurationMinutes === 'number'
     ? summary.workDurationMinutes
-    : (startedAtDate && completedAtDate
-        ? Math.max(0, Math.round((completedAtDate.getTime() - startedAtDate.getTime()) / 60000))
+    : (isValidDate(startedAtDate) && isValidDate(completedAtDate)
+        ? Math.max(0, Math.round((safeTime(completedAtDate) - safeTime(startedAtDate)) / 60000))
         : null);
+        
   const totalDurationMinutes = typeof summary.totalDurationMinutes === 'number'
     ? summary.totalDurationMinutes
-    : [travelDurationMinutes, workDurationMinutes].reduce((acc, minutes) => {
+    : ([travelDurationMinutes, workDurationMinutes].reduce((acc, minutes) => {
         if (typeof minutes !== 'number') return acc;
-        return (acc ?? 0) + minutes;
-      }, null);
+        return (acc || 0) + minutes;
+      }, null));
   const workerNameFor = workerId => {
-    const id = workerId?.toString();
-    const match = assignedWorkers.find(w => (w._id || w).toString() === id);
+    if (!workerId) return 'Worker';
+    const id = workerId.toString();
+    const match = assignedWorkers.find(w => w && (w._id || w).toString() === id);
     return match?.name || 'Worker';
   };
 
@@ -278,6 +342,85 @@ export default function JobDetail() {
         clientSecret={clientSecret} 
         onSuccess={handlePaymentSuccess}
       />
+
+      {showDisputeModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowDisputeModal(false)}></div>
+            </div>
+
+            {/* This element is to trick the browser into centering the modal contents. */}
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            
+            <div 
+              className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full relative z-10"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <ShieldAlert className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                      Raise a Dispute
+                    </h3>
+                    <div className="mt-2 text-sm text-gray-500 mb-4">
+                      <p>If you're facing issues with this job or payment, please let us know. Our team will investigate.</p>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Reason</label>
+                        <select
+                          value={disputeReason}
+                          onChange={(e) => setDisputeReason(e.target.value)}
+                          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm rounded-md"
+                        >
+                          <option value="Payment Issue">Payment Issue</option>
+                          <option value="Incomplete Work">Incomplete Work</option>
+                          <option value="Poor Quality">Poor Quality</option>
+                          <option value="Unprofessional Behavior">Unprofessional Behavior</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Description</label>
+                        <textarea
+                          rows={3}
+                          className="mt-1 shadow-sm focus:ring-red-500 focus:border-red-500 block w-full sm:text-sm border border-gray-300 rounded-md"
+                          placeholder="Please provide more details..."
+                          value={disputeDesc}
+                          onChange={(e) => setDisputeDesc(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={handleRaiseDispute}
+                >
+                  Submit Dispute
+                </button>
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setShowDisputeModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {statusMsg && (
         <div className="mb-4 p-4 rounded-md bg-green-50 border border-green-200">
@@ -509,31 +652,31 @@ export default function JobDetail() {
                     <dt className="font-medium text-gray-500">Total Payment</dt>
                     <dd className="mt-1 text-gray-900 flex items-center gap-2">
                       <IndianRupee className="w-4 h-4 text-gray-400" />
-                      {payment.total} {payment.currency}
+                      {payment?.total} {payment?.currency}
                     </dd>
                   </div>
                   <div>
                     <dt className="font-medium text-gray-500">Payment Status</dt>
-                    <dd className="mt-1 text-gray-900 capitalize">{payment.status ? payment.status.replace(/_/g, ' ') : 'Unknown'}</dd>
+                    <dd className="mt-1 text-gray-900 capitalize">{payment?.status ? payment.status.replace(/_/g, ' ') : 'Unknown'}</dd>
                   </div>
                   <div>
                     <dt className="font-medium text-gray-500">Updated</dt>
-                    <dd className="mt-1 text-gray-900">{formatDateTime(payment.updatedAt)}</dd>
+                    <dd className="mt-1 text-gray-900">{formatDateTime(payment?.updatedAt)}</dd>
                   </div>
                   <div>
                     <dt className="font-medium text-gray-500">Platform Fee</dt>
-                    <dd className="mt-1 text-gray-900">{payment.platformFeePct ?? '—'}%</dd>
+                    <dd className="mt-1 text-gray-900">{payment?.platformFeePct ?? '—'}%</dd>
                   </div>
                   <div className="sm:col-span-2">
                     <dt className="font-medium text-gray-500 mb-2">Payees</dt>
                     <ul className="space-y-2">
-                      {(payment.payees || []).map((p, idx) => (
+                      {(payment?.payees || []).map((p, idx) => (
                         <li key={idx} className="flex justify-between text-gray-700 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
-                          <span>{workerNameFor(p.worker)} {p.status ? `(${p.status.replace(/_/g, ' ')})` : ''}</span>
-                          <span>{p.amount} {payment.currency}</span>
+                          <span>{workerNameFor(p?.worker)} {p?.status ? `(${p.status.replace(/_/g, ' ')})` : ''}</span>
+                          <span>{p?.amount} {payment?.currency}</span>
                         </li>
                       ))}
-                      {(payment.payees || []).length === 0 && (
+                      {(payment?.payees || []).length === 0 && (
                         <li className="text-sm text-gray-500">No payouts recorded yet.</li>
                       )}
                     </ul>
@@ -578,6 +721,16 @@ export default function JobDetail() {
                     {payment ? 'Manage Payment' : 'Create Payment'}
                   </button>
                 </>
+              )}
+
+              {(isCustomer || isAssignedWorker) && job.status !== 'completed' && job.status !== 'cancelled' && (
+                <button
+                  onClick={() => setShowDisputeModal(true)}
+                  className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >
+                  <ShieldAlert className="w-4 h-4 mr-2" />
+                  Raise Dispute
+                </button>
               )}
             </div>
           </div>
@@ -740,41 +893,83 @@ export default function JobDetail() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* OTP Section */}
+          {/* Journey & Verification Section */}
           {(job.status === 'accepted' || job.status === 'en_route') && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <Lock className="w-5 h-5 mr-2 text-primary-600" />
-                Start Job Verification
-              </h3>
-              
-              {isCustomer && (
-                <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
-                  <p className="text-sm text-blue-800 mb-2">Share this code with the worker when they arrive:</p>
-                  <div className="text-3xl font-bold text-blue-900 tracking-widest">{job.startOtp}</div>
-                </div>
-              )}
+               {/* 1. Worker needs to mark arrival first */}
+               {isAssignedWorker && job.status === 'en_route' && !job.timeline?.arrivedAt && (
+                  <div className="text-center">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center justify-center">
+                      <Navigation className="w-5 h-5 mr-2 text-blue-600" />
+                      Arrived at Location?
+                    </h3>
+                    <button
+                      onClick={markArrived}
+                      className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    >
+                      Yes, I have Reached Destination
+                    </button>
+                    <p className="mt-2 text-xs text-gray-500">Tap only when you are at the customer's location.</p>
+                  </div>
+               )}
 
-              {isAssignedWorker && (
-                <form onSubmit={startJob} className="space-y-3">
-                  <p className="text-sm text-gray-600">Ask the customer for the start code:</p>
-                  <input
-                    type="text"
-                    maxLength={4}
-                    value={otp}
-                    onChange={e => setOtp(e.target.value)}
-                    placeholder="Enter 4-digit OTP"
-                    className="block w-full text-center text-2xl tracking-widest rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                  />
-                  <button
-                    type="submit"
-                    disabled={starting || otp.length !== 4}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-300"
-                  >
-                    {starting ? 'Verifying...' : 'Start Job'}
-                  </button>
-                </form>
-              )}
+               {/* 2. OTP Verification Section (Shown if Accept/Arrived) */}
+               {/* Show OTP only if: 
+                   - Is Customer (Always show code)
+                   - Is Worker AND (Status is Accepted OR (En Route AND Arrived)) 
+                   Wait, user said 'reached destination after displayed when he start travel', implying sequence: Accepted -> Start Travel -> En Route -> Reached -> OTP.
+                   So if status is accepted, worker sees 'Start Travel' button elsewhere (in Actions).
+                   If En Route, worker should mark Arrived.
+                   So OTP input should show ONLY if Arrived.
+               */}
+               {((isCustomer) || (isAssignedWorker && (job.status === 'en_route' && job.timeline?.arrivedAt) || job.status === 'in_progress')) && (
+                 <>
+                    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                      <Lock className="w-5 h-5 mr-2 text-primary-600" />
+                      Start Job Verification
+                    </h3>
+                    
+                    {isCustomer && (
+                      <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <p className="text-sm text-blue-800 mb-2">Share this code with the worker when they arrive:</p>
+                        <div className="text-3xl font-bold text-blue-900 tracking-widest">{job.startOtp}</div>
+                        {job.status === 'en_route' && !job.timeline?.arrivedAt && (
+                           <p className="mt-2 text-xs text-orange-600 flex items-center justify-center">
+                             <Navigation className="w-3 h-3 mr-1" />
+                             Worker is en route
+                           </p>
+                        )}
+                         {job.status === 'en_route' && job.timeline?.arrivedAt && (
+                           <p className="mt-2 text-xs text-green-600 flex items-center justify-center">
+                             <MapPin className="w-3 h-3 mr-1" />
+                             Worker has arrived!
+                           </p>
+                        )}
+                      </div>
+                    )}
+
+                    {isAssignedWorker && (
+                      <form onSubmit={startJob} className="space-y-3">
+                        <p className="text-sm text-gray-600">You have arrived! Ask customer for the code:</p>
+                        <input
+                          type="text"
+                          maxLength={4}
+                          value={otp}
+                          onChange={e => setOtp(e.target.value)}
+                          placeholder="Enter 4-digit OTP"
+                          className="block w-full text-center text-2xl tracking-widest rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        />
+                        <button
+                          type="submit"
+                          disabled={starting || otp.length !== 4}
+                          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-300"
+                        >
+                          {starting ? 'Verifying...' : 'Start Job'}
+                        </button>
+                      </form>
+                    )}
+                 </>
+               )}
             </div>
           )}
 
@@ -896,6 +1091,17 @@ export default function JobDetail() {
           )}
         </div>
       </div>
+      
+      {/* SOS Button */}
+      {(job.status === 'in_progress' || job.status === 'en_route') && (isCustomer || isAssignedWorker) && (
+        <button
+          onClick={handleSOS}
+          title="EMERGENCY SOS"
+          className="fixed bottom-32 right-6 p-4 rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 animate-pulse z-40"
+        >
+          <AlertTriangle className="w-8 h-8" />
+        </button>
+      )}
     </div>
   );
 }

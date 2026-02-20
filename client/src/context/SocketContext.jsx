@@ -31,5 +31,10 @@ export function SocketProvider({ children }) {
 }
 
 export function useSocket() {
-  return useContext(SocketContext);
+  const context = useContext(SocketContext);
+  if (context === null) {
+     // Return a safe fallback to prevent crashes if context is missing or not initialized
+     return { socket: null }; 
+  }
+  return context;
 }

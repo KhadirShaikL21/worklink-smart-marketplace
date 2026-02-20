@@ -34,6 +34,14 @@ const JobSchema = new mongoose.Schema(
       appliedAt: { type: Date, default: Date.now },
       status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' }
     }],
+    dispute: {
+      raisedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      reason: { type: String, required: false },
+      description: { type: String, required: false },
+      status: { type: String, enum: ['open', 'resolved', 'closed'], default: 'open' },
+      createdAt: { type: Date, default: Date.now },
+      resolution: { type: String }
+    },
     team: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
     media: {
       beforeUrls: [String],
@@ -57,6 +65,7 @@ const JobSchema = new mongoose.Schema(
     timeline: {
       assignedAt: { type: Date },
       travelStartedAt: { type: Date },
+      arrivedAt: { type: Date },
       startedAt: { type: Date },
       completedAt: { type: Date }
     },

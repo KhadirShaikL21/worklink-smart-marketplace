@@ -196,7 +196,7 @@ export default function Matching() {
                         {candidate.score > 80 ? 'A+' : candidate.score > 60 ? 'A' : 'B'}
                       </div>
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900">Worker {candidate.workerId.slice(-4)}</h3>
+                        <h3 className="text-lg font-medium text-gray-900">Worker {(candidate.workerId || 'unknown').toString().slice(-4)}</h3>
                         <div className="flex items-center text-sm text-gray-500 mt-1 space-x-4">
                           <span className="flex items-center">
                             <Star className="w-4 h-4 text-yellow-400 mr-1" />

@@ -34,17 +34,36 @@ export async function rankWorkersForJob(jobId, weights = DEFAULT_WEIGHTS) {
   const job = await Job.findById(jobId);
   if (!job) throw new Error('Job not found');
 
-  const workers = await WorkerProfile.find({
-    skills: { $in: job.skillsRequired },
+  const query = {
     'location.coordinates': { $exists: true }
-  }).populate('user');
+  };
+  
+  if (job.skillsRequired && job.skillsRequired.length > 0) {
+    query.skills = { $in: job.skillsRequired };
+  }
 
-  const distanceValues = workers.map(w =>
-    haversineDistanceKm(job.location.coordinates, w.location.coordinates)
+  const workers = await WorkerProfile.find(query).populate('user');
+  
+  // If strict skill match returns nothing, fallback to location-based match only
+  let rankedWorkers = workers;
+  if (workers.length === 0 && job.skillsRequired && job.skillsRequired.length > 0) {
+      const fallbackQuery = { 
+        'location.coordinates': { $exists: true } 
+      };
+      rankedWorkers = await WorkerProfile.find(fallbackQuery).populate('user');
+  }
+
+  const distanceValues = rankedWorkers.map(w =>
+    (job.location?.coordinates && w.location?.coordinates) 
+      ? haversineDistanceKm(job.location.coordinates, w.location.coordinates) 
+      : 9999
   );
-  const rateValues = workers.map(w => w.hourlyRate || 0);
-  const ratingValues = workers.map(w => w.ratingStats?.average || 4.0);
-  const experienceValues = workers.map(w => w.experienceYears || 0);
+  
+  const workerList = rankedWorkers; // Alias
+
+  const rateValues = workerList.map(w => w.hourlyRate || 0);
+  const ratingValues = workerList.map(w => w.ratingStats?.average || 4.0);
+  const experienceValues = workerList.map(w => w.experienceYears || 0);
 
   const distMin = Math.min(...distanceValues, 0);
   const distMax = Math.max(...distanceValues, 1);
@@ -55,7 +74,7 @@ export async function rankWorkersForJob(jobId, weights = DEFAULT_WEIGHTS) {
   const expMin = Math.min(...experienceValues, 0);
   const expMax = Math.max(...experienceValues, 1);
 
-  const ranked = workers
+  const ranked = workerList
     .map((w, idx) => {
       const distanceKm = distanceValues[idx];
       const priceScore = 1 - normalize(w.hourlyRate, rateMin, rateMax);
@@ -78,7 +97,7 @@ export async function rankWorkersForJob(jobId, weights = DEFAULT_WEIGHTS) {
         weights.coldStart * coldStartScore;
 
       return {
-        workerId: w.user._id,
+        workerId: w.user?._id || w.user,
         profileId: w._id,
         score: Number(total.toFixed(4)),
         breakdown: {

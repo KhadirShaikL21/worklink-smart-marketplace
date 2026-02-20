@@ -90,12 +90,12 @@ export default function JobTrackingMap({ job, userRole }) {
   if (!isReady) return null;
 
   return (
-    <div className="h-96 w-full rounded-lg overflow-hidden shadow-md border border-gray-200 mt-4">
+    <div className="h-96 w-full rounded-lg overflow-hidden shadow-md border border-gray-200 mt-4 relative z-0">
       <MapContainer 
         center={jobLocation} 
         zoom={13} 
         scrollWheelZoom={false} 
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: '100%', width: '100%', zIndex: 0 }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
