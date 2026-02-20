@@ -8,7 +8,7 @@ import { AnimatePresence } from 'framer-motion';
 import PageTransition from './ui/PageTransition.jsx';
 import { 
   Menu, X, Bell, MessageSquare, User, Briefcase, 
-  Home, LogOut, Search, Sparkles 
+  Home, LogOut, Search, Sparkles, HelpCircle 
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Toaster } from 'react-hot-toast';
@@ -40,6 +40,7 @@ export default function Layout() {
     { name: 'Workers', href: '/workers', icon: User },
     // Moved Assistant into a more subtle position or keep it concise
      { name: 'Assistant', href: '/assistant', icon: Sparkles },
+    { name: 'Help', href: '/help', icon: HelpCircle },
   ];
 
   const userNavigation = [

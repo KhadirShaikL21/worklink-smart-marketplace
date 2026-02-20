@@ -16,6 +16,7 @@ import Home from './pages/Home.jsx';
 import ThankYou from './pages/ThankYou.jsx';
 import VerifyEmail from './pages/VerifyEmail.jsx';
 import FindWork from './pages/FindWork.jsx';
+import HelpCenter from './pages/HelpCenter.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import './styles/global.css';
 
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="jobs/:jobId/matching" element={<Protected><Matching /></Protected>} />
         <Route path="find-work" element={<Protected><FindWork /></Protected>} />
         <Route path="worker-jobs" element={<Protected><WorkerJobs /></Protected>} />
+        <Route path="help" element={<HelpCenter />} />
         <Route path="notifications" element={<Protected><Notifications /></Protected>} />
         <Route path="chat" element={<Protected><Chat /></Protected>} />
         <Route path="profile" element={<Protected><Profile /></Protected>} />
