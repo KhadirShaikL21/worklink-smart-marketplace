@@ -35,11 +35,21 @@
   - [x] Frontend: Update `JobCreate` form to accept video files.
   - [x] Frontend: Add Video Player in `JobDetail` page.
 
-## Phase 5: Future Enhancements (Backlog)
+## Phase 5: Safety & Disputes
+
+- [x] **Dispute Resolution System**
+  - [x] Backend: Create `Dispute` schema/model associated with Job.
+  - [x] Backend: API endpoint to raise dispute.
+  - [x] Frontend: "Raise Dispute" button in Job Details.
+  - [x] Frontend: Form for reason and description.
+- [x] **SOS Panic Button**
+  - [x] Frontend: Emergency button on active jobs.
+  - [x] Backend: Handle SOS trigger and alert notifications.
+
+## Phase 6: Future Enhancements (Backlog)
 
 - [ ] Video Consultation (Pre-booking).
 - [ ] AI Defect Detection.
 - [ ] Worker Badges & Leaderboards.
-- [ ] SOS Panic Button.
 
 .\stripe.exe listen --foorward-to localhost:5000/api/webhook

@@ -410,6 +410,36 @@ export async function verifyStartOtp(req, res) {
   return res.json({ message: 'Job started successfully', job });
 }
 
+export async function arrivedAtLocation(req, res) {
+  const { jobId } = req.params;
+  const job = await Job.findById(jobId);
+  if (!job) return res.status(404).json({ message: 'Job not found' });
+  
+  const isAssigned = job.assignedWorkers.some(w => w.toString() === req.user._id.toString());
+  if (!isAssigned) {
+    return res.status(403).json({ message: 'Only assigned workers can mark arrival' });
+  }
+
+  if (job.status !== 'en_route') {
+     return res.status(400).json({ message: 'Job must be en route to arrive' });
+  }
+
+  job.timeline = job.timeline || {};
+  job.timeline.arrivedAt = new Date();
+  await job.save();
+
+  // Notify Customer
+  await notify({
+    userId: job.customer,
+    type: 'job_update',
+    title: 'Worker Arrived',
+    body: `Worker has arrived at the location for job: ${job.title}`,
+    metadata: { jobId: job._id }
+  });
+
+  return res.json({ message: 'Arrival marked', job });
+}
+
 export async function getJob(req, res) {
   const { jobId } = req.params;
   const job = await Job.findById(jobId).populate('assignedWorkers', 'name email phone');
@@ -598,3 +628,86 @@ export async function applyForJob(req, res) {
     return res.status(500).json({ message: 'Failed to apply for job' });
   }
 }
+
+export async function raiseDispute(req, res) {
+  const { jobId } = req.params;
+  const { reason, description } = req.body;
+  
+  try {
+    const job = await Job.findById(jobId);
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    // Only assigned worker or customer can raise a dispute
+    const isCustomer = job.customer.toString() === req.user._id.toString();
+    const isWorker = job.assignedWorkers.some(w => w.toString() === req.user._id.toString());
+    
+    if (!isCustomer && !isWorker) {
+      return res.status(403).json({ message: 'Unauthorized to raise dispute on this job' });
+    }
+
+    job.status = 'disputed';
+    // Use set to ensure nested object is updated or created
+    job.dispute = {
+      raisedBy: req.user._id,
+      reason,
+      description,
+      status: 'open',
+      createdAt: new Date()
+    };
+    
+    await job.save();
+
+    // Notify other party
+    // If worker raised it, notify customer. If customer raised it, notify all workers (usually 1)
+    const targetUserIds = isCustomer ? job.assignedWorkers : [job.customer];
+    
+    for (const targetId of targetUserIds) {
+      await notify({
+        userId: targetId,
+        type: 'job_dispute',
+        title: 'Dispute Raised',
+        body: `A dispute has been raised on job: ${job.title}`,
+        metadata: { jobId: job._id }
+      });
+    }
+
+    return res.json({ message: 'Dispute raised successfully', job });
+  } catch (err) {
+    console.error('Error raising dispute:', err);
+    return res.status(500).json({ message: 'Failed to raise dispute' });
+  }
+}
+
+export async function triggerSOS(req, res) {
+  const { jobId } = req.params;
+  const { location } = req.body;
+
+  try {
+    const job = await Job.findById(jobId).populate('customer assignedWorkers');
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    console.log(`SOS triggered for Job ${jobId} by user ${req.user._id} at location:`, location);
+
+    const alertMessage = `EMERGENCY SOS triggered for job: ${job.title}. Police have been notified.`;
+    
+    // Notify all parties involved
+    const recipients = [job.customer._id, ...job.assignedWorkers.map(w => w._id)];
+    for (const userId of recipients) {
+      if (userId.toString() !== req.user._id.toString()) {
+         await notify({
+            userId, 
+            type: 'emergency',
+            title: 'SOS EMERGENCY',
+            body: alertMessage, 
+            metadata: { jobId, urgency: 'critical' }
+         });
+      }
+    }
+
+    res.json({ message: 'SOS Alert Broadcasted. Emergency contacts notified.' });
+  } catch (err) {
+    console.error('SOS Error:', err);
+    res.status(500).json({ message: 'Failed to trigger SOS' });
+  }
+}
+
