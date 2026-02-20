@@ -46,10 +46,45 @@
   - [x] Frontend: Emergency button on active jobs.
   - [x] Backend: Handle SOS trigger and alert notifications.
 
-## Phase 6: Future Enhancements (Backlog)
+## Phase 6: Gamification & Ranking (High Priority)
 
-- [ ] Video Consultation (Pre-booking).
-- [ ] AI Defect Detection.
-- [ ] Worker Badges & Leaderboards.
+- [ ] **Worker Badges & Achievements**
+  - [ ] Backend: Define badge criteria (e.g., "5-Star Streak", "Early Bird", "Verified Pro").
+  - [ ] Backend: Logic to award badges automatically on job completion.
+  - [ ] Frontend: Display badges on Worker Profile and Job Proposals.
+- [ ] **Leaderboards**
+  - [ ] Backend: Calculate weekly/monthly top workers based on ratings & jobs completed.
+  - [ ] Frontend: "Top Workers" section on Home/Worker list.
+
+## Phase 7: Advanced Location & Alerts
+
+- [ ] **Geofencing Notifications**
+  - [ ] Backend: Calculate distance between Worker and Job location.
+  - [ ] Backend: Trigger "Worker Appriving Soon" notification when within 1km.
+  - [ ] Frontend: Visual indicator on map (e.g., "Arriving in 5 mins").
+
+## Phase 8: Experience Polish & Globalization
+
+- [ ] **Full Localization Audit**
+  - [ ] Review all new AI screens (Job Create, Chat) for missing translations.
+  - [ ] Add specific vernacular terms for blue-collar jobs (Hindi, Telugu, etc.).
+  - [ ] Testing: Verify language switching persists across reload.
+- [ ] **Admin Dashboard** (System Management)
+  - [ ] User Management (Ban/Verify users).
+  - [ ] Dispute Resolution Center (Admin view).
+  - [ ] Platform Analytics (Jobs posted vs completed, Revenue).
+
+## Phase 9: Advanced Communication (Optional)
+
+- [ ] **Video Consultation**
+  - [ ] Pre-booking video calls for estimates.
+  - [ ] WebRTC integration (PeerJS or Twilio).
+
+## Phase 10: Suggested Future Enhancements (AI Proposed)
+
+- [ ] **Offline Mode for Workers:** Cache job details locally for low-connectivity areas; sync when online.
+- [ ] **Smart Pricing AI:** Suggest dynamic pricing based on demand/supply in the area (Surge pricing).
+- [ ] **Voice-First Navigation:** Voice commands for app navigation (accessibility for illiterate workers).
+- [ ] **Subscription Plans:** "Pro" tier for workers (lower commission) or Customers (priority support).
 
 .\stripe.exe listen --foorward-to localhost:5000/api/webhook
