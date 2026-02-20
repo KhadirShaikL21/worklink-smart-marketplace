@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import env from '../config/env.js';
 import { CUSTOMER_PROMPT, WORKER_PROMPT } from '../config/aiPrompts.js';
 
@@ -6,14 +6,14 @@ import { CUSTOMER_PROMPT, WORKER_PROMPT } from '../config/aiPrompts.js';
 // Updated based on available models for the key from check-models.js
 const MODELS_TO_TRY = [
   'gemini-2.0-flash',
-  'gemini-2.0-flash-lite', 
+  'gemini-2.5-flash',
   'gemini-flash-latest',
   'gemini-pro-latest'
 ];
 
 function getClient() {
   if (!env.geminiApiKey) return null;
-  return new GoogleGenAI({ apiKey: env.geminiApiKey });
+  return new GoogleGenerativeAI(env.geminiApiKey);
 }
 
 // Helper to confirm model availability with the new SDK
@@ -35,16 +35,18 @@ async function generateWithFallback(operation) {
       
       const isNotFound = msg.includes('404') || status === 404 || msg.includes('not found');
       const isRateLimited = msg.includes('429') || status === 429 || msg.includes('quota') || msg.includes('Too Many Requests');
+      const isImageError = msg.includes('image') || msg.includes('vision');
 
-      if (!isNotFound && !isRateLimited) {
-          console.error(`Gemini Error (${modelName}):`, msg);
-          throw err;
+      console.warn(`Gemini Warning (${modelName}):`, msg);
+
+      // If text model fails on image, just continue to next model
+      if (isImageError && modelName === 'gemini-pro') {
+         // ignore
+      } else if (!isNotFound && !isRateLimited && !isImageError) {
+          // Unexpected error, maybe auth? Throw it unless we want to keep trying
+          // let's try others just in case
       }
       
-      if (isRateLimited) {
-        console.warn(`Gemini Model ${modelName} rate limited. Switching to next model...`);
-      }
-
       lastError = err;
       // Continue to next model
     }
@@ -52,25 +54,71 @@ async function generateWithFallback(operation) {
   throw lastError || new Error('All Gemini models failed');
 }
 
+// Helper to clean Markdown JSON
+function cleanJsonMarkdown(text) {
+  if (!text) return '{}';
+  return text.replace(/```json/g, '').replace(/```/g, '').trim();
+}
+
 export async function generateStructuredJobDescription(prompt) {
   try {
     const text = await generateWithFallback(async (ai, model) => {
-        const response = await ai.models.generateContent({
-            model: model,
-            contents: prompt, // Simple string content
-            config: {
-                responseMimeType: 'application/json' 
-            }
-        });
-        return response.text; 
+        // Skip vision models for text-only tasks if strict, but 1.5 handles both
+        const genModel = ai.getGenerativeModel({ model: model });
+        
+        const result = await genModel.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
     });
     
-    // Clean up if the model returns markdown JSON despite mimeType
-    const cleaned = text && text.replace(/```json/g, '').replace(/```/g, '').trim();
-    return cleaned || '{}';
+    return cleanJsonMarkdown(text);
   } catch (err) {
     console.error('Gemini Structure Gen failed:', err);
-    return JSON.stringify({});
+    return '{}';
+  }
+}
+
+export async function analyzeDefectImage(imageBuffer, mimeType) {
+  try {
+    const prompt = `
+      Analyze this image of a maintenance issue. 
+      Identify the defect, suggested job title, category (Plumbing, Electrical, Carpenter, Appliance, Cleaning, or Other), urgency (low, medium, high, emergency), and a short professional description.
+      Also estimate the required skills, budget range (in INR), estimated work hours, and number of workers needed.
+      Return ONLY a JSON object with keys: 
+      title, 
+      category, 
+      urgency, 
+      description,
+      skills_required (array of strings),
+      budget_min (number),
+      budget_max (number),
+      hours_estimate (number),
+      workers_needed (number).
+    `;
+    
+    // Create the image part for Gemini
+    const imagePart = {
+      inlineData: {
+        data: imageBuffer.toString('base64'),
+        mimeType: mimeType
+      }
+    };
+
+    const text = await generateWithFallback(async (ai, model) => {
+      // Legacy gemini-pro does not support images
+      if (model === 'gemini-pro') throw new Error('Model gemini-pro does not support images');
+
+      const genModel = ai.getGenerativeModel({ model: model });
+      
+      const result = await genModel.generateContent([prompt, imagePart]);
+      const response = await result.response;
+      return response.text();
+    });
+
+    return cleanJsonMarkdown(text);
+  } catch (err) {
+    console.error('Gemini Image Analysis failed:', err);
+    throw err;
   }
 }
 
@@ -80,43 +128,40 @@ export async function generateChatReply(message, context = {}) {
     const systemPrompt = role === 'worker' ? WORKER_PROMPT : CUSTOMER_PROMPT;
 
     const text = await generateWithFallback(async (ai, model) => {
-        // We will put the system instruction in the first user message 
-        // to be compatible with models that support it and those that don't (via prompt injection)
-        const response = await ai.models.generateContent({
-             model: model,
-             contents: [
-                 {
-                     role: 'user',
-                     parts: [{ text: `SYSTEM_INSTRUCTION: ${systemPrompt}\n\nUser: Hello, who are you?` }]
-                 },
-                 {
-                     role: 'model',
-                     parts: [{ text: role === 'worker' 
-                        ? "Namaste! I am the WorkLink Partner Support Assistant. I am here to help you get more jobs, understand the app, and earn better. Ask me anything in English, Hindi, or Telugu!" 
-                        : "Hello! I am your WorkLink Customer Assistant. I can help you post jobs, track workers, and manage payments. How can I assist you today?" 
-                    }]
-                 },
-                 {
-                     role: 'user',
-                     parts: [{ text: message }]
-                 }
-             ]
-        });
-        return response.text;
+        const generationConfig = {
+           temperature: 0.7,
+        };
+        
+        // Use systemInstruction if available (Gemini 1.5+)
+        const modelParams = { 
+           model: model, 
+           generationConfig
+        };
+        
+        // Add system instruction for supported models
+        if (model.includes('1.5') || model.includes('flash')) {
+           modelParams.systemInstruction = systemPrompt;
+        }
+
+        const genModel = ai.getGenerativeModel(modelParams);
+        
+        // If model doesn't support systemInstruction (legacy), prompt injection
+        let finalMessage = message;
+        if (!model.includes('1.5') && !model.includes('flash')) {
+           finalMessage = `SYSTEM: ${systemPrompt}\n\nUSER: ${message}`;
+        }
+        
+        const result = await genModel.generateContent(finalMessage);
+        const response = await result.response;
+        return response.text();
     });
-
-    return text ? text.trim() : '';
-
+    
+    return text;
   } catch (err) {
     console.error('Gemini Chat failed:', err);
-     const reason = err?.message || 'unknown error';
-    if (reason.includes('429') || reason.includes('quota')) {
-      return 'AI temporarily paused: Gemini quota exceeded. Please retry in ~1 minute.';
-    }
-    return `Sorry, the AI service is unavailable right now. (${reason})`;
+    return "I'm having trouble connecting to my brain right now. Please try again later.";
   }
 }
-
 
 export function buildJobPrompt({ description, language = 'en', context = {}, audience = 'customer' }) {
   const { locationHint = '', budgetHint = '', urgencyHint = '' } = context;

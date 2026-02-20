@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../utils/api';
-import { Sparkles, Save, ArrowRight, Loader2, AlertCircle, CheckCircle2, Video, MapPin, Crosshair } from 'lucide-react';
+import { Sparkles, Save, ArrowRight, Loader2, AlertCircle, CheckCircle2, Video, MapPin, Crosshair, Camera, X } from 'lucide-react';
 import clsx from 'clsx';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -42,6 +42,10 @@ export default function JobCreate() {
   const [assistant, setAssistant] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   
+  // Image Defect Analysis State
+  const [defectImage, setDefectImage] = useState(null);
+  const [analyzingImage, setAnalyzingImage] = useState(false);
+
   const [mapPosition, setMapPosition] = useState({lat: 20.5937, lng: 78.9629}); // Default India
   const [loadingLocation, setLoadingLocation] = useState(true);
 
@@ -145,6 +149,56 @@ export default function JobCreate() {
     }
   };
 
+  const handleDefectImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setDefectImage(file);
+    setAnalyzingImage(true);
+    setAssistant(null); // Clear previous text assistant results
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await api.post('/api/ai/analyze-defect', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const structured = res.data.structured || {};
+      const rawText = res.data.raw;
+
+      // Auto-fill everything
+      if (structured.title) setForm(f => ({ ...f, title: structured.title }));
+      if (structured.category) setForm(f => ({ ...f, category: structured.category }));
+      if (structured.urgency) setForm(f => ({ ...f, urgency: structured.urgency.toLowerCase() }));
+      
+      // Auto-fill extended fields
+      if (structured.skills_required && Array.isArray(structured.skills_required)) {
+        setForm(f => ({ ...f, skillsRequired: structured.skills_required.join(', ') }));
+      }
+      if (structured.budget_min) setForm(f => ({ ...f, budgetMin: String(structured.budget_min) }));
+      if (structured.budget_max) setForm(f => ({ ...f, budgetMax: String(structured.budget_max) }));
+      if (structured.hours_estimate) setForm(f => ({ ...f, hoursEstimate: String(structured.hours_estimate) }));
+      if (structured.workers_needed) setForm(f => ({ ...f, workersNeeded: String(structured.workers_needed) }));
+
+      // Update description specifically
+      if (structured.description) setDescription(structured.description);
+
+      // We can also set assistant result to show "Analysis Complete"
+      setAssistant({ 
+        structured, 
+        raw: "Image analysis complete! Form has been auto-filled based on the defect detected." 
+      });
+
+    } catch (err) {
+      console.error('Image analysis failed', err);
+      setError('Failed to analyze the image. Please try again or fill manually.');
+    } finally {
+      setAnalyzingImage(false);
+    }
+  };
+
   const onSubmit = async e => {
     e.preventDefault();
     setSubmitting(true);
@@ -219,6 +273,62 @@ export default function JobCreate() {
             </div>
             
             <div className="space-y-4">
+              {/* Photo Analysis */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-3">
+                <label className="block text-sm font-medium text-blue-900 mb-2 flex items-center">
+                  <Camera className="w-4 h-4 mr-2 text-blue-600" />
+                  Auto-fill from Photo
+                </label>
+                <div className="flex items-center space-x-3">
+                  <label className="flex-1 cursor-pointer group">
+                    <span className="sr-only">Choose File</span>
+                    <div className={clsx(
+                      "flex items-center justify-center border-2 border-dashed rounded-lg p-2 transition-colors",
+                      defectImage ? "border-green-300 bg-green-50" : "border-blue-200 hover:border-blue-400 bg-white"
+                    )}>
+                      {analyzingImage ? (
+                        <div className="flex items-center text-sm text-blue-600">
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Analyzing Defect...
+                        </div>
+                      ) : defectImage ? (
+                        <div className="flex items-center text-sm text-green-700 font-medium">
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Processed: {defectImage.name}
+                        </div>
+                      ) : (
+                        <div className="flex items-center text-sm text-gray-500 group-hover:text-blue-600">
+                          <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded text-xs mr-2 font-semibold">NEW</span>
+                          Snap a photo of the issue
+                        </div>
+                      )}
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleDefectImageUpload}
+                      disabled={analyzingImage}
+                    />
+                  </label>
+                  {defectImage && !analyzingImage && (
+                    <button 
+                      type="button" 
+                      onClick={() => { setDefectImage(null); setAssistant(null); }}
+                      className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      title="Clear"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-blue-600/80">
+                  AI will identify the problem and fill the form for you.
+                </p>
+              </div>
+
+              <div className="border-t border-gray-100 my-2"></div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Describe the job in plain language

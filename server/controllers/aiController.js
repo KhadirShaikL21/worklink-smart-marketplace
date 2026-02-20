@@ -1,5 +1,26 @@
 import { validationResult } from 'express-validator';
-import { buildJobPrompt, generateStructuredJobDescription, generateChatReply } from '../services/gemini.js';
+import { buildJobPrompt, generateStructuredJobDescription, generateChatReply, analyzeDefectImage } from '../services/gemini.js';
+
+export async function analyzeDefect(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ message: 'Image file required' });
+  }
+
+  try {
+    const resultJson = await analyzeDefectImage(req.file.buffer, req.file.mimetype);
+    let structured = {};
+    try {
+      structured = JSON.parse(resultJson);
+    } catch (e) {
+      console.error('Failed to parse AI response', e);
+      // fallback partial
+    }
+    return res.json({ structured, raw: resultJson });
+  } catch (err) {
+    console.error('AI Analysis Error:', err);
+    return res.status(500).json({ message: 'Failed to analyze image', error: err.message });
+  }
+}
 
 export async function jobPostAssistant(req, res) {
   const errors = validationResult(req);
