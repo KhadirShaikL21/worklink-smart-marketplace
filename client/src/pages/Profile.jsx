@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext.jsx';
-import { User, Phone, Mail, CheckCircle, XCircle, Camera, Shield, Loader2, AlertTriangle, MapPin, Briefcase, Star, Edit2, Save, X } from 'lucide-react';
+import { User, Phone, Mail, CheckCircle, XCircle, Camera, Shield, Loader2, AlertTriangle, MapPin, Briefcase, Star, Edit2, Save, X, Award } from 'lucide-react';
 import clsx from 'clsx';
 
 export default function Profile() {
@@ -249,6 +249,28 @@ export default function Profile() {
                      </div>
                    </div>
                  </div>
+
+                 {/* Badges */}
+                 {user.workerProfile?.badges && user.workerProfile.badges.length > 0 && (
+                   <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden">
+                     <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-yellow-400 w-16 h-16 rounded-full opacity-10"></div>
+                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                       <Award className="w-5 h-5 text-yellow-500 mr-2" />
+                       Achievements
+                     </h3>
+                     <div className="flex flex-col gap-3">
+                       {user.workerProfile.badges.map((badge, idx) => (
+                         <div key={idx} className="flex items-center gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100" title={badge.description || ''}>
+                           <span className="text-2xl flex-shrink-0">{badge.icon || '🏅'}</span>
+                           <div className="flex flex-col overflow-hidden">
+                             <span className="text-sm font-bold text-gray-900 truncate">{badge.name}</span>
+                             {badge.description && <span className="text-xs text-gray-600 truncate">{badge.description}</span>}
+                           </div>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 )}
 
                  {/* Contact & Verification */}
                  <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">

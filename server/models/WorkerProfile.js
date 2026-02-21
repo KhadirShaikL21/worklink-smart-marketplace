@@ -45,6 +45,15 @@ const WorkerProfileSchema = new mongoose.Schema(
     availability: { type: AvailabilitySchema, default: () => ({}) },
     toolsOwned: [{ type: String, trim: true }],
     certifications: [{ label: String, url: String }],
+    badges: [
+      {
+        id: { type: String, required: true }, // e.g., 'fast_responder', 'top_rated'
+        name: { type: String, required: true },
+        icon: String,
+        awardedAt: { type: Date, default: Date.now }
+      }
+    ],
+    reputationPoints: { type: Number, default: 0 },
     documents: {
       idFrontUrl: String,
       idBackUrl: String,

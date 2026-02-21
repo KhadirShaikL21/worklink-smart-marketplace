@@ -5,6 +5,7 @@ import Completion from '../models/Completion.js';
 import { addRating } from '../utils/ratings.js';
 import Payment from '../models/Payment.js';
 import { releasePayouts, refundPayment } from '../services/payments.js';
+import { checkAndAwardBadges, recalculateReputation } from '../services/gamification.js';
 
 export async function acceptTask(req, res) {
   const { taskId } = req.params;
@@ -50,6 +51,7 @@ export async function customerSatisfaction(req, res) {
   await job.save();
 
   if (status === 'satisfied') {
+    // Increment completed jobs and set available
     await WorkerProfile.updateMany(
       { user: { $in: job.assignedWorkers } },
       { 
@@ -57,6 +59,14 @@ export async function customerSatisfaction(req, res) {
         $set: { isAvailable: true }
       }
     );
+
+    // Gamification hook: Check for badges
+    if (job.assignedWorkers && job.assignedWorkers.length > 0) {
+      for (const workerId of job.assignedWorkers) {
+        await checkAndAwardBadges(workerId);
+        await recalculateReputation(workerId);
+      }
+    }
   }
 
   // Tie payouts/refunds to satisfaction
@@ -91,6 +101,12 @@ export async function submitRating(req, res) {
     scores: { punctuality, quality, professionalism },
     review
   });
+
+  // Gamification hook: Check for badges
+  if (workerId) {
+    await checkAndAwardBadges(workerId);
+    await recalculateReputation(workerId);
+  }
 
   return res.status(201).json({ rating });
 }
