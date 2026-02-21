@@ -1,4 +1,4 @@
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
@@ -18,19 +18,30 @@ import VerifyEmail from './pages/VerifyEmail.jsx';
 import FindWork from './pages/FindWork.jsx';
 import HelpCenter from './pages/HelpCenter.jsx';
 import { useAuth } from './context/AuthContext.jsx';
+import AdminDashboard from './pages/AdminDashboard.jsx';
+import AdminUsers from './pages/AdminUsers.jsx';
 import './styles/global.css';
 
 function Protected({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
+
   if (loading) return <p>Loading...</p>;
   if (!user) return <Navigate to="/login" replace />;
   
-  // Force email verification
-  if (!user.verification?.emailVerified && window.location.pathname !== '/verify-email') {
-    // Allow access to verify-email page itself to prevent loop
-    return <Navigate to="/verify-email" replace />;
+  if (!user.verification?.emailVerified && location.pathname !== '/verify-email') {
+     return <Navigate to="/verify-email" replace />;
   }
 
+  return children;
+}
+
+function AdminRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>;
+  if (!user || !user.roles.includes('admin')) {
+    return <Navigate to="/" replace />;
+  }
   return children;
 }
 
@@ -56,6 +67,11 @@ export default function App() {
         <Route path="profile/:userId" element={<Protected><Profile /></Protected>} />
         <Route path="workers" element={<Protected><Workers /></Protected>} />
         <Route path="thank-you" element={<Protected><ThankYou /></Protected>} />
+        
+        {/* Admin Routes */}
+        <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+        <Route path="admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+        <Route path="admin/disputes" element={<AdminRoute><AdminDashboard /></AdminRoute>} /> {/* Placeholder */}
       </Route>
     </Routes>
   );
