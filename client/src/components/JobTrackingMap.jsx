@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline, Circle } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useSocket } from '../context/SocketContext';
 import { useAuth } from '../context/AuthContext';
+import { toast } from 'react-hot-toast';
 
 // Fix for default marker icon in React Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -60,9 +61,38 @@ export default function JobTrackingMap({ job, userRole }) {
       setWorkerLocation(data.location);
     });
 
+    socket.on('worker_arriving', (data) => {
+      // Show specific toast or banner
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-green-500 shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-white">
+                  🚀 Update!
+                </p>
+                <p className="mt-1 text-sm text-green-100">
+                  {data.message || 'Worker is Arriving Soon!'}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-green-600">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-green-100 hover:text-white focus:outline-none"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ), { duration: 6000 });
+    });
+
     return () => {
       socket.emit('leave_job', job._id);
       socket.off('worker_location');
+      socket.off('worker_arriving');
     };
   }, [socket, job]);
 
@@ -101,6 +131,15 @@ export default function JobTrackingMap({ job, userRole }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+
+        {/* Geofence 1km Circle */}
+        {jobLocation && (
+          <Circle 
+            center={jobLocation} 
+            radius={1000} 
+            pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1, dashArray: '10, 10' }} 
+          />
+        )}
         
         {/* Job Location Marker */}
         <Marker position={jobLocation}>

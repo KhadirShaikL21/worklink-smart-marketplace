@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Bell, Check, Clock, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { useNotifications } from '../context/NotificationContext.jsx';
@@ -80,6 +81,14 @@ export default function Notifications() {
                       <p className="text-gray-600 text-sm leading-relaxed">
                         {n.body}
                       </p>
+                      {n.link && (
+                        <Link 
+                          to={n.link} 
+                          className="text-primary-600 hover:text-primary-700 font-medium text-sm block mt-2 hover:underline"
+                        >
+                          View Details
+                        </Link>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       <span className="text-xs text-gray-400 flex items-center gap-1">
