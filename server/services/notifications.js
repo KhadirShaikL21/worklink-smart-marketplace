@@ -3,18 +3,24 @@ import { emitNotification } from './realtime.js';
 import { sendEmail } from './email.js';
 import User from '../models/User.js';
 
-export async function notify({ userId, type, title, body, metadata = {}, channels = ['inapp'] }) {
-  const note = await Notification.create({ user: userId, type, title, body, metadata, channels });
+export async function notify({ userId, type, title, body, link, metadata = {}, channels = ['inapp'] }) {
+  const note = await Notification.create({ user: userId, type, title, body, link, metadata, channels });
   emitNotification(userId, note);
   
   if (channels.includes('email')) {
     try {
       const user = await User.findById(userId);
       if (user && user.email) {
+        
+        let htmlBody = `<p>${body}</p>`;
+        if (link) {
+          htmlBody += `<p><a href="${process.env.CLIENT_URL || 'http://localhost:5173'}${link}" style="display: inline-block; padding: 10px 20px; background-color: #2563EB; color: #fff; text-decoration: none; border-radius: 5px;">View Details</a></p>`;
+        }
+
         await sendEmail({
           to: user.email,
           subject: title,
-          html: `<p>${body}</p>`
+          html: htmlBody
         });
       }
     } catch (err) {

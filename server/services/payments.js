@@ -4,6 +4,7 @@ import Job from '../models/Job.js';
 import User from '../models/User.js';
 import dotenv from 'dotenv';
 import { sendEmail } from './email.js';
+import { notify } from './notifications.js';
 
 dotenv.config();
 
@@ -65,6 +66,16 @@ export async function markCaptured(paymentId) {
   if (payment) {
     // Send Receipt to Customer
     if (payment.payer && payment.payer.email) {
+      // In-App Notification
+      await notify({
+        userId: payment.payer._id,
+        type: 'payment_success',
+        title: 'Payment Successful',
+        body: `Payment of ${payment.currency} ${payment.total} for job ${payment.job.title} was successful.`,
+        link: `/jobs/${payment.job._id}`,
+        metadata: { jobId: payment.job._id, paymentId: payment._id }
+      });
+
       await sendEmail({
         to: payment.payer.email,
         subject: `Payment Receipt: ${payment.job.title}`,
@@ -73,23 +84,37 @@ export async function markCaptured(paymentId) {
           <p>Thank you for your payment for job: <strong>${payment.job.title}</strong></p>
           <p>Total Amount: ${payment.currency} ${payment.total}</p>
           <p>Transaction ID: ${payment.stripePaymentIntentId}</p>
+          <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/jobs/${payment.job._id}">View Job Details</a>
         `
       });
     }
 
     // Send Notification to Workers
     for (const payee of payment.payees) {
-      if (payee.worker && payee.worker.email) {
-        await sendEmail({
-          to: payee.worker.email,
-          subject: `Payment Received: ${payment.job.title}`,
-          html: `
-            <h2>Payment Received</h2>
-            <p>You have received a payment for job: <strong>${payment.job.title}</strong></p>
-            <p>Amount Credited: ${payment.currency} ${payee.amount}</p>
-            <p>(Platform fees have been deducted)</p>
-          `
+      if (payee.worker) {
+        // In-App Notification
+        await notify({
+          userId: payee.worker._id,
+          type: 'payment_received',
+          title: 'Payment Received',
+          body: `You received ${payment.currency} ${payee.amount} for job: ${payment.job.title}`,
+          link: `/worker-jobs/${payment.job._id}`,
+          metadata: { jobId: payment.job._id, paymentId: payment._id }
         });
+
+        if (payee.worker.email) {
+          await sendEmail({
+            to: payee.worker.email,
+            subject: `Payment Received: ${payment.job.title}`,
+            html: `
+              <h2>Payment Received</h2>
+              <p>You have received a payment for job: <strong>${payment.job.title}</strong></p>
+              <p>Amount Credited: ${payment.currency} ${payee.amount}</p>
+              <p>(Platform fees have been deducted)</p>
+              <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/worker-jobs/${payment.job._id}">View Job Details</a>
+            `
+          });
+        }
       }
     }
   }

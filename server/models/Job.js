@@ -28,6 +28,7 @@ const JobSchema = new mongoose.Schema(
       index: true
     },
     startOtp: { type: String },
+    isArrivalNotificationSent: { type: Boolean, default: false },
     assignedWorkers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     applicants: [{
       worker: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

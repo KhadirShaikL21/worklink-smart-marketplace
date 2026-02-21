@@ -67,6 +67,7 @@ export async function createJob(req, res) {
         type: 'job_alert',
         title: 'New Job Match',
         body: `A new job "${title}" matches your skills!`,
+        link: `/worker-jobs`,
         metadata: { jobId: job._id }
       });
     }
@@ -118,6 +119,7 @@ export async function formTeam(req, res) {
     type: 'job_update',
     title: 'Team Formed',
     body: `A team has been formed for your job: ${job.title}`,
+    link: `/jobs/${job._id}`,
     metadata: { jobId: job._id }
   });
 
@@ -128,6 +130,7 @@ export async function formTeam(req, res) {
       type: 'job_assignment',
       title: 'New Job Assignment',
       body: `You have been assigned to job: ${job.title} as ${task.role}`,
+      link: `/worker-jobs/${job._id}`,
       metadata: { jobId: job._id, taskId: task._id }
     });
   }
@@ -157,6 +160,7 @@ export async function formTeamOptimized(req, res) {
         type: 'job_update',
         title: 'Team Optimized & Formed',
         body: `An optimized team has been formed for your job: ${job.title}`,
+        link: `/jobs/${job._id}`,
         metadata: { jobId: job._id }
       });
 
@@ -167,6 +171,7 @@ export async function formTeamOptimized(req, res) {
           type: 'job_assignment',
           title: 'New Job Assignment',
           body: `You have been assigned to job: ${job.title} as ${task.role}`,
+          link: `/worker-jobs/${job._id}`,
           metadata: { jobId: job._id, taskId: task._id }
         });
       }
@@ -276,6 +281,7 @@ export async function assignWorkers(req, res) {
       type: 'job_assignment',
       title: 'New Job Assigned',
       body: `You have been assigned to job: ${job.title}`,
+      link: `/worker-jobs/${job._id}`,
       metadata: { jobId: job._id }
     });
   }
@@ -326,6 +332,7 @@ export async function acceptJob(req, res) {
     type: 'job_update',
     title: 'Job Accepted',
     body: `Worker has accepted the job assignment.`,
+    link: `/jobs/${job._id}`,
     metadata: { jobId: job._id }
   });
 
@@ -358,6 +365,7 @@ export async function startTravel(req, res) {
     type: 'job_update',
     title: 'Worker En Route',
     body: `Worker is on the way to your location`,
+    link: `/jobs/${job._id}`,
     metadata: { jobId: job._id }
   });
 
@@ -404,6 +412,7 @@ export async function verifyStartOtp(req, res) {
     type: 'job_update',
     title: 'Job Started',
     body: `Worker has started the job: ${job.title}`,
+    link: `/jobs/${job._id}`,
     metadata: { jobId: job._id }
   });
 
@@ -434,6 +443,7 @@ export async function arrivedAtLocation(req, res) {
     type: 'job_update',
     title: 'Worker Arrived',
     body: `Worker has arrived at the location for job: ${job.title}`,
+    link: `/jobs/${job._id}`,
     metadata: { jobId: job._id }
   });
 
@@ -444,13 +454,27 @@ export async function getJob(req, res) {
   const { jobId } = req.params;
   const job = await Job.findById(jobId).populate('assignedWorkers', 'name email phone');
   if (!job) return res.status(404).json({ message: 'Job not found' });
+  
   const isCustomer = job.customer.toString() === req.user._id.toString();
   const isAssignedWorker = job.assignedWorkers?.some(w => w._id.toString() === req.user._id.toString());
-  if (!isCustomer && !isAssignedWorker) return res.status(403).json({ message: 'Forbidden' });
+  const isOpen = job.status === 'open';
+
+  // Allow open jobs to be viewed by anyone (workers looking for jobs)
+  if (!isCustomer && !isAssignedWorker && !isOpen) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
 
   const jobData = job.toObject();
+  
+  // Hide sensitive data if not authorized fully
   if (!isCustomer) {
     delete jobData.startOtp;
+  }
+  
+  // If not assigned and not customer (e.g. potential applicant), maybe hide exact location or full customer details?
+  // Current requirement doesn't specify, but usually we hide customer contact until assigned.
+  if (!isCustomer && !isAssignedWorker) {
+     // Keep generic info
   }
 
   const payment = await Payment.findOne({ job: jobId }).sort({ createdAt: -1 }).lean();
@@ -536,6 +560,7 @@ export async function completeJob(req, res) {
     type: 'job_update',
     title: 'Job Completed',
     body: `Worker has marked the job as completed. Please review the proof of work.`,
+    link: `/jobs/${job._id}`,
     metadata: { jobId: job._id },
     channels: ['inapp', 'email']
   });
@@ -620,6 +645,7 @@ export async function applyForJob(req, res) {
       type: 'job_application',
       title: 'New Job Application',
       body: `A worker has applied for your job: ${job.title}`,
+      link: `/jobs/${job._id}`,
       metadata: { jobId: job._id, workerId: req.user._id }
     });
 
@@ -667,6 +693,7 @@ export async function raiseDispute(req, res) {
         type: 'job_dispute',
         title: 'Dispute Raised',
         body: `A dispute has been raised on job: ${job.title}`,
+        link: `/jobs/${job._id}`,
         metadata: { jobId: job._id }
       });
     }
@@ -699,6 +726,7 @@ export async function triggerSOS(req, res) {
             type: 'emergency',
             title: 'SOS EMERGENCY',
             body: alertMessage, 
+            link: `/jobs/${jobId}`,
             metadata: { jobId, urgency: 'critical' }
          });
       }

@@ -6,6 +6,7 @@ const NotificationSchema = new mongoose.Schema(
     type: { type: String, required: true },
     title: { type: String, required: true },
     body: { type: String, required: true },
+    link: { type: String },
     metadata: Object,
     channels: [{ type: String, enum: ['push', 'sms', 'email', 'inapp'] }],
     read: { type: Boolean, default: false }
