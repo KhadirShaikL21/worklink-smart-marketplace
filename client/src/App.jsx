@@ -20,6 +20,7 @@ import HelpCenter from './pages/HelpCenter.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import AdminUsers from './pages/AdminUsers.jsx';
+import AdminDisputes from './pages/AdminDisputes.jsx';
 import './styles/global.css';
 
 function Protected({ children }) {
@@ -71,7 +72,7 @@ export default function App() {
         {/* Admin Routes */}
         <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-        <Route path="admin/disputes" element={<AdminRoute><AdminDashboard /></AdminRoute>} /> {/* Placeholder */}
+        <Route path="admin/disputes" element={<AdminRoute><AdminDisputes /></AdminRoute>} />
       </Route>
     </Routes>
   );
