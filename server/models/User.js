@@ -40,6 +40,7 @@ const UserSchema = new mongoose.Schema(
     phone: { type: String, required: true, unique: true, trim: true },
     passwordHash: { type: String, required: true },
     roles: { type: [String], default: ['customer'] }, // customer, worker, admin
+    status: { type: String, enum: ['active', 'banned', 'suspended'], default: 'active' },
     isWorker: { type: Boolean, default: false },
     isCustomer: { type: Boolean, default: true },
     verification: { type: VerificationSchema, default: () => ({}) },

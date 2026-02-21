@@ -92,6 +92,11 @@ export default function Layout() {
               {user ? (
                 <>
                   <div className="flex items-center space-x-2 border-r border-gray-200 pr-4">
+                    {user.roles.includes('admin') && (
+                        <Link to="/admin" className="p-2 text-gray-500 hover:text-primary-600 transition-colors" title="Admin Dashboard">
+                             <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold">ADMIN</span>
+                        </Link>
+                    )}
                     <Link to="/notifications" className="p-2 text-gray-400 hover:text-primary-600 transition-colors relative">
                       <Bell className="w-5 h-5" />
                       {unreadCount > 0 && (
