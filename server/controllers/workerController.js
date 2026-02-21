@@ -1,5 +1,6 @@
 import WorkerProfile from '../models/WorkerProfile.js';
 import User from '../models/User.js';
+import { getLeaderboard } from '../services/gamification.js';
 
 export async function listWorkers(req, res) {
   const { skill, search } = req.query;
@@ -35,6 +36,8 @@ export async function listWorkers(req, res) {
     rating: p.ratingStats?.average || 4,
     ratingCount: p.ratingStats?.count || 0,
     completedJobs: p.completedJobs || 0,
+    badges: p.badges || [],
+    reputationPoints: p.reputationPoints || 0,
     isAvailable: p.isAvailable,
     bio: p.bio,
     location: p.location,
@@ -125,7 +128,9 @@ export async function getWorkerById(req, res) {
           location: profile.location,
           availability: profile.availability,
           isAvailable: profile.isAvailable,
-          completedJobs: profile.completedJobs
+          completedJobs: profile.completedJobs,
+          badges: profile.badges,
+          reputationPoints: profile.reputationPoints
         },
         reviews: reviews.map(r => ({
           id: r._id,
@@ -141,3 +146,16 @@ export async function getWorkerById(req, res) {
     return res.status(500).json({ message: 'Failed to fetch worker', error: err.message });
   }
 }
+
+export async function getWorkersLeaderboard(req, res) {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const leaders = await getLeaderboard(limit);
+    return res.json(leaders);
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    return res.status(500).json({ message: 'Leaderboard fetch failed', error: error.message });
+  }
+}
+  
+  

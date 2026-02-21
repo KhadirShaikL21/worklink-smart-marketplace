@@ -1,12 +1,26 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../utils/api';
 import { useAuth } from '../context/AuthContext.jsx';
-import { ArrowRight, Shield, Zap, Users, Search } from 'lucide-react';
+import { ArrowRight, Shield, Zap, Users, Search, Star, Award } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 export default function Home() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const [topWorkers, setTopWorkers] = useState([]);
+
+  useEffect(() => {
+    const fetchTopWorkers = async () => {
+      try {
+        const res = await api.get('/api/workers/leaderboard?limit=3');
+        setTopWorkers(res.data);
+      } catch (err) {
+        console.error('Failed to load leaderboard', err);
+      }
+    };
+    fetchTopWorkers();
+  }, []);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -96,6 +110,75 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Top Workers Leaderboard */}
+      {topWorkers.length > 0 && (
+        <section className="py-24 relative overflow-hidden bg-gray-50/50">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-yellow-50/50 via-gray-50/50 to-white/50"></div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center max-w-2xl mx-auto mb-16">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Top Rated Professionals</h2>
+              <p className="text-gray-500">Meet our community heroes who consistently deliver excellence and reliability.</p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {topWorkers.map((worker, i) => (
+                <div key={worker._id || i} className="block relative">
+                <Link to={`/profile/${worker.user?._id}`} className="block bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative group h-full">
+                  {i === 0 && (
+                    <div className="absolute -top-3 -right-3 bg-yellow-400 text-white p-2 rounded-full shadow-lg z-10 animate-pulse">
+                      <Award className="w-6 h-6" />
+                    </div>
+                  )}
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="relative">
+                      <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-primary-100">
+                        <img 
+                          src={worker.user?.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(worker.user?.name || 'User')}&background=random`} 
+                          alt={worker.user?.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        />
+                      </div>
+                      <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 border-2 border-white rounded-full"></div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary-600 transition-colors">{worker.user?.name}</h3>
+                      <p className="text-sm text-gray-500">{worker.title || 'Skilled Worker'}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mb-4 text-sm">
+                    <div className="flex items-center bg-yellow-50 px-2 py-1 rounded-md">
+                      <Star className="w-4 h-4 text-yellow-500 fill-current mr-1" />
+                      <span className="font-bold text-gray-900">{(worker.reputationPoints || 0) > 0 ? (worker.reputationPoints / 100).toFixed(1) : 'New'}</span>
+                    </div>
+                    <span className="text-gray-500">{worker.completedJobs} jobs done</span>
+                  </div>
+
+                  {worker.badges?.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                       {worker.badges.slice(0, 3).map((badge, idx) => (
+                         <span key={idx} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600" title={badge.name}>
+                           {badge.icon} {badge.name}
+                         </span>
+                       ))}
+                    </div>
+                  ) : (
+                    <div className="flex gap-1">
+                      {worker.skills?.slice(0, 2).map((skill, idx) => (
+                         <span key={idx} className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                           {skill}
+                         </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-24 bg-gray-900 relative overflow-hidden">
