@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useSocket } from '../context/SocketContext.jsx';
 import { useNotifications } from '../context/NotificationContext.jsx';
 import AssistantWidget from './AssistantWidget.jsx';
 import LanguageSwitcher from './LanguageSwitcher.jsx';
@@ -8,18 +9,72 @@ import { AnimatePresence } from 'framer-motion';
 import PageTransition from './ui/PageTransition.jsx';
 import { 
   Menu, X, Bell, MessageSquare, User, Briefcase, 
-  Home, LogOut, Search, Sparkles, HelpCircle 
+  Home, LogOut, Search, Sparkles, HelpCircle, PhoneIncoming, PhoneOff 
 } from 'lucide-react';
 import clsx from 'clsx';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 
 export default function Layout() {
   const { user, logout } = useAuth();
+  const { incomingCall, setIncomingCall, socket } = useSocket();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { unreadCount } = useNotifications();
   const { t } = useTranslation();
+
+  // Handle incoming call notification
+  useEffect(() => {
+    if (incomingCall && location.pathname !== '/chat') {
+      toast.custom((item) => (
+        <div className={`${item.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black ring-opacity-5`}>
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                 <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <PhoneIncoming className="h-6 w-6 text-green-600 animate-pulse" />
+                 </div>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-medium text-gray-900">
+                  {t('videoCall.incomingTitle')}
+                </p>
+                <p className="mt-1 text-sm text-gray-500">
+                   {t('videoCall.tapToAnswer')}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-gray-200">
+            <button
+              onClick={() => {
+                toast.dismiss(item.id);
+                navigate('/chat', { state: { autoAnswer: true } });
+              }}
+              className="w-full border border-transparent rounded-none rounded-r-lg p-4 flex items-center justify-center text-sm font-medium text-indigo-600 hover:text-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              {t('videoCall.answer')}
+            </button>
+          </div>
+           <div className="flex border-l border-gray-200">
+            <button
+              onClick={() => {
+                toast.dismiss(item.id);
+                setIncomingCall(null);
+                if (socket) socket.emit('call:reject', { to: incomingCall.from });
+              }}
+              className="w-full border border-transparent rounded-none p-4 flex items-center justify-center text-sm font-medium text-red-600 hover:text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500"
+            >
+              {t('videoCall.reject')}
+            </button>
+          </div>
+        </div>
+      ), { duration: Infinity, id: 'incoming-call-toast' });
+    } else {
+       toast.dismiss('incoming-call-toast');
+    }
+  }, [incomingCall, location.pathname, navigate, setIncomingCall, socket]);
 
   const navigation = [
     { name: 'Home', href: '/', icon: Home },

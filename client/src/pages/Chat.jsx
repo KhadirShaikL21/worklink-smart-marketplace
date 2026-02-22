@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
 import { useSocket } from '../context/SocketContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { Send, MessageSquare, User, Mic, Play, Pause, ArrowLeft, Briefcase, Trash2, StopCircle, Loader2 } from 'lucide-react';
+import { Send, MessageSquare, User, Mic, Play, Pause, ArrowLeft, Briefcase, Trash2, StopCircle, Loader2, Video, Phone } from 'lucide-react';
+import VideoCall from '../components/VideoCall.jsx';
 import { ChatSkeleton } from '../components/ui/Skeleton.jsx';
 import clsx from 'clsx';
 
@@ -80,6 +83,7 @@ const AudioMessage = ({ url }) => {
 };
 
 export default function Chat() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { socket } = useSocket();
   const [rooms, setRooms] = useState([]);
@@ -97,10 +101,38 @@ export default function Chat() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
-  const audioContextRef = useRef(null);
+  const audioContextRef = useRef(null);  
   const analyserRef = useRef(null);
   const canvasRef = useRef(null);
   const animationFrameRef = useRef(null);
+
+  // Video Call State
+  const [isVideoCallOpen, setIsVideoCallOpen] = useState(false);
+  const [isCaller, setIsCaller] = useState(false);
+  const { incomingCall, setIncomingCall } = useSocket();
+  const incomingCallSignal = incomingCall;
+  const location = useLocation();
+  const autoAnswer = location.state?.autoAnswer;
+
+  // Listen for incoming calls via Context
+  useEffect(() => {
+    if (incomingCall && !isVideoCallOpen) {
+       console.log('Incoming call from context:', incomingCall.from);
+       setIsCaller(false);
+       setIsVideoCallOpen(true);
+    }
+  }, [incomingCall, isVideoCallOpen]);
+
+  const startVideoCall = () => {
+    setIsCaller(true);
+    setIsVideoCallOpen(true);
+  };
+
+  const closeVideoCall = () => {
+    setIsVideoCallOpen(false);
+    setIncomingCall(null);
+    setIsCaller(false);
+  };
   
   const messagesEndRef = useRef(null);
 
@@ -288,6 +320,9 @@ export default function Chat() {
   };
 
   const handleStopRecording = async () => {
+    if (audioChunksRef.current.length === 0) return;
+    
+    // Create blob from chunks
     const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
     const file = new File([audioBlob], 'voice-note.webm', { type: 'audio/webm' });
     
@@ -304,6 +339,7 @@ export default function Chat() {
       
       await api.post('/api/chat', { 
         roomId: activeRoom._id, 
+        body: 'Voice Message',
         type: 'audio',
         audioUrl 
       });
@@ -348,82 +384,10 @@ export default function Chat() {
       <User className="w-5 h-5" />
     );
   };
-
-  // --- Audio Player Component ---
-  const AudioMessage = ({ url }) => {
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const audioRef = useRef(null);
-
-    useEffect(() => {
-        const audio = audioRef.current;
-        if (!audio) return;
-
-        const handleTimeUpdate = () => {
-             const p = (audio.currentTime / audio.duration) * 100;
-             setProgress(p);
-        };
-
-        const handleEnded = () => {
-            setIsPlaying(false);
-            setProgress(0);
-        };
-
-        audio.addEventListener('timeupdate', handleTimeUpdate);
-        audio.addEventListener('ended', handleEnded);
-
-        return () => {
-            audio.removeEventListener('timeupdate', handleTimeUpdate);
-            audio.removeEventListener('ended', handleEnded);
-        };
-    }, []);
-
-    const togglePlay = () => {
-        if (audioRef.current.paused) {
-            audioRef.current.play();
-            setIsPlaying(true);
-        } else {
-            audioRef.current.pause();
-            setIsPlaying(false);
-        }
-    };
-
-    return (
-        <div className="flex items-center gap-3 w-64">
-            <button 
-                onClick={togglePlay}
-                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 hover:bg-gray-200 transition-colors flex-shrink-0"
-            >
-                {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
-            </button>
-            
-            <div className="flex-1 flex flex-col gap-1">
-                {/* Fake Waveform / Progress Bar */}
-                <div className="h-8 flex items-center gap-[2px] w-full overflow-hidden">
-                   {/* Create a static waveform visual that gets 'filled' based on progress */}
-                    {Array.from({ length: 30 }).map((_, i) => (
-                        <div 
-                            key={i} 
-                            className={clsx(
-                                "w-1 rounded-full transition-all duration-300",
-                                (i / 30) * 100 < progress 
-                                    ? "bg-current opacity-100" // Played part
-                                    : "bg-current opacity-30"  // Unplayed part
-                            )}
-                            style={{ 
-                                height: `${Math.max(20, Math.random() * 100)}%`, // Random height for looks
-                                animation: isPlaying ? `bounce 1s infinite ${i * 0.05}s` : 'none' 
-                            }}
-                        />
-                    ))}
-                </div>
-            </div>
-            
-            <audio ref={audioRef} src={url} className="hidden" />
-        </div>
-    );
-  };
-
+ 
+  // END of Chat Component Logic
+  
+  // Render
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 h-[calc(100vh-5rem)]">
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col md:flex-row">
@@ -478,23 +442,37 @@ export default function Chat() {
           {activeRoom ? (
             <>
               {/* Chat Header */}
-              <div className="p-4 border-b border-gray-200 flex items-center gap-3 bg-white shadow-sm z-10">
-                <button 
-                  onClick={() => setShowMobileChat(false)}
-                  className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </button>
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold overflow-hidden">
-                  {getRoomAvatar(activeRoom)}
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white shadow-sm z-10">
+                <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => setShowMobileChat(false)}
+                      className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold overflow-hidden">
+                      {getRoomAvatar(activeRoom)}
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">{getRoomName(activeRoom)}</h3>
+                      <span className="flex items-center gap-1.5 text-xs text-green-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span>
+                        {activeRoom.type === 'group' ? `${activeRoom.participants.length} participants` : 'Active now'}
+                      </span>
+                    </div>
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">{getRoomName(activeRoom)}</h3>
-                  <span className="flex items-center gap-1.5 text-xs text-green-600">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span>
-                    {activeRoom.type === 'group' ? `${activeRoom.participants.length} participants` : 'Active now'}
-                  </span>
-                </div>
+
+                {/* Video Call Button */}
+                {/* Available for direct chats or job chats where a worker is assigned (not open bidding phase) */}
+                {activeRoom.participants.length > 1 && (!activeRoom.job || activeRoom.job.status !== 'open') && (
+                    <button 
+                        onClick={startVideoCall}
+                        className="p-2 rounded-full bg-primary-100 text-primary-600 hover:bg-primary-200 transition-colors shadow-sm"
+                        title={t('videoCall.startConsultation')}
+                    >
+                        <Video className="w-5 h-5" />
+                    </button>
+                )}
               </div>
 
               {/* Messages List */}
@@ -625,6 +603,18 @@ export default function Chat() {
           )}
         </div>
       </div>
+      
+      {/* Video Call Modal */}
+      {isVideoCallOpen && (
+         <VideoCall
+            isCaller={isCaller}
+            // If caller, use active room participant. If incoming, recipientId is not strictly needed by component for answering
+            recipientId={isCaller ? activeRoom?.participants.find(p => p._id !== user._id)?._id : null}
+            incomingSignal={incomingCallSignal}
+            onClose={closeVideoCall}
+            autoAnswer={autoAnswer}
+         />
+      )}
     </div>
   );
 }
