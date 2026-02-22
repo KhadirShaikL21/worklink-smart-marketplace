@@ -168,5 +168,24 @@
         ]
       }
     ]
+  },
+  "videoCall": {
+    "startConsultation": "Start Video Consultation",
+    "incomingTitle": "Incoming Video Call",
+    "incomingDesc": "Someone is requesting a video consultation.",
+    "calling": "Calling...",
+    "connected": "Connected",
+    "failed": "Failed to access camera/microphone",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "videoOff": "Stop Video",
+    "videoOn": "Start Video",
+    "endCall": "End Call",
+    "answer": "Answer",
+    "reject": "Reject",
+    "tapToAnswer": "Tap to answer",
+    "remoteUser": "Remote User",
+    "you": "You",
+    "waitingVideo": "Waiting for video..."
   }
 }

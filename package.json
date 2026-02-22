@@ -23,6 +23,7 @@
     "@google/generative-ai": "^0.24.1",
     "nodemailer": "^7.0.11",
     "react-hot-toast": "^2.6.0",
-    "stripe": "^20.0.0"
+    "stripe": "^20.0.0",
+    "vite-plugin-node-polyfills": "^0.25.0"
   }
 }

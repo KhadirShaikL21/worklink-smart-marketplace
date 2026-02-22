@@ -117,6 +117,27 @@ export function initRealtime(httpServer) {
         console.error('Geofencing error:', err);
       }
     });
+
+    // Video Call Signaling
+    socket.on('call:offer', ({ offer, to }) => {
+      emitToUser(to, 'call:incoming', { offer, from: socket.userId });
+    });
+
+    socket.on('call:answer', ({ answer, to }) => {
+      emitToUser(to, 'call:answered', { answer, from: socket.userId });
+    });
+
+    socket.on('call:ice-candidate', ({ candidate, to }) => {
+      emitToUser(to, 'call:ice-candidate', { candidate, from: socket.userId });
+    });
+
+    socket.on('call:end', ({ to }) => {
+      emitToUser(to, 'call:ended', { from: socket.userId });
+    });
+
+    socket.on('call:reject', ({ to }) => {
+      emitToUser(to, 'call:rejected', { from: socket.userId });
+    });
   });
 
   return io;
