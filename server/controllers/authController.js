@@ -134,6 +134,12 @@ export async function login(req, res) {
   const match = await user.comparePassword(password);
   if (!match) return res.status(401).json({ message: 'Invalid credentials' });
 
+  if (user.status === 'banned' || user.status === 'suspended') {
+    return res.status(403).json({ 
+      message: `Account is ${user.status}. Reason: ${user.blockedReason || 'Violation of terms'}` 
+    });
+  }
+
   const { accessToken, refreshToken } = buildTokens(user);
   user.lastLoginAt = new Date();
   user.refreshTokens.push({ token: refreshToken });
