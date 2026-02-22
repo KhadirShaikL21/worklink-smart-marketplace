@@ -41,6 +41,7 @@ const UserSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true },
     roles: { type: [String], default: ['customer'] }, // customer, worker, admin
     status: { type: String, enum: ['active', 'banned', 'suspended'], default: 'active' },
+    blockedReason: { type: String },
     isWorker: { type: Boolean, default: false },
     isCustomer: { type: Boolean, default: true },
     verification: { type: VerificationSchema, default: () => ({}) },

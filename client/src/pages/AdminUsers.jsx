@@ -10,6 +10,10 @@ export default function AdminUsers() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [actionLoading, setActionLoading] = useState(null);
+  
+  // Modals state
+  const [blockModal, setBlockModal] = useState({ isOpen: false, userId: null, reason: '' });
+  const [detailModal, setDetailModal] = useState({ isOpen: false, user: null, stats: null, disputes: [], loading: false });
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -31,13 +35,40 @@ export default function AdminUsers() {
     return () => clearTimeout(timeout);
   }, [page, search]);
 
+  const openBlockModal = (userId) => {
+    setBlockModal({ isOpen: true, userId, reason: '' });
+  };
+
+  const handleBlockConfirm = async () => {
+    if (!blockModal.reason.trim()) return alert('Please provide a reason.');
+    
+    setActionLoading(blockModal.userId);
+    try {
+      await api.patch(`/api/admin/users/${blockModal.userId}/status`, { 
+        action: 'ban', 
+        reason: blockModal.reason 
+      });
+      setBlockModal({ isOpen: false, userId: null, reason: '' });
+      fetchUsers();
+    } catch (err) {
+      alert('Failed to block user');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleStatusChange = async (userId, action) => {
+    if (action === 'ban') {
+       openBlockModal(userId);
+       return;
+    }
+    
     if (!window.confirm(`Are you sure you want to ${action.replace('_', ' ')} this user?`)) return;
     
     setActionLoading(userId);
     try {
       await api.patch(`/api/admin/users/${userId}/status`, { action });
-      fetchUsers(); // Refresh list
+      fetchUsers(); 
     } catch (err) {
       alert('Failed to update status');
     } finally {
@@ -45,8 +76,132 @@ export default function AdminUsers() {
     }
   };
 
+  const handleViewDetails = async (userId) => {
+      setDetailModal(prev => ({ ...prev, isOpen: true, loading: true }));
+      try {
+          const res = await api.get(`/api/admin/users/${userId}`);
+          setDetailModal({ 
+              isOpen: true, 
+              loading: false, 
+              user: res.data.user, 
+              stats: res.data.stats, 
+              disputes: res.data.disputes 
+          });
+      } catch (err) {
+          console.error(err);
+          setDetailModal({ isOpen: false, loading: false, user: null });
+          alert('Failed to load details');
+      }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Block Modal */}
+      {blockModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-xl font-bold mb-4">Block User</h2>
+            <p className="text-gray-600 mb-4">Please specify a reason for blocking this user.</p>
+            <textarea
+              className="w-full border rounded-lg p-2 mb-4 focus:ring-2 focus:ring-red-500 outline-none"
+              rows="3"
+              placeholder="Reason for blocking..."
+              value={blockModal.reason}
+              onChange={(e) => setBlockModal({ ...blockModal, reason: e.target.value })}
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setBlockModal({ isOpen: false, userId: null, reason: '' })}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleBlockConfirm}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Block User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {detailModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+             <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-bold">User Details</h2>
+                <button onClick={() => setDetailModal({ isOpen: false })}><X className="w-6 h-6" /></button>
+             </div>
+             
+             {detailModal.loading ? (
+                 <div className="flex justify-center p-10"><Loader2 className="animate-spin w-8 h-8" /></div>
+             ) : (
+                 detailModal.user && (
+                 <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                        <img 
+                            src={detailModal.user.avatarUrl || `https://ui-avatars.com/api/?name=${detailModal.user.name}`} 
+                            className="w-16 h-16 rounded-full bg-gray-200"
+                        />
+                        <div>
+                            <h3 className="text-xl font-semibold">{detailModal.user.name}</h3>
+                            <p className="text-gray-500">{detailModal.user.email}</p>
+                            <p className="text-gray-500">{detailModal.user.phone}</p>
+                            <div className="flex gap-2 mt-2">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${detailModal.user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    {detailModal.user.status.toUpperCase()}
+                                </span>
+                                {detailModal.user.status === 'banned' && (
+                                    <span className="text-xs text-red-600 italic mt-1">Reason: {detailModal.user.blockedReason}</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <h4 className="text-sm font-medium text-gray-500">Jobs Posted (Customer)</h4>
+                            <p className="text-2xl font-bold">{detailModal.stats?.jobsCreated || 0}</p>
+                        </div>
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                            <h4 className="text-sm font-medium text-gray-500">Jobs Completed (Worker)</h4>
+                            <p className="text-2xl font-bold">{detailModal.stats?.jobsCompleted || 0}</p>
+                        </div>
+                    </div>
+
+                    {detailModal.disputes && detailModal.disputes.length > 0 && (
+                        <div>
+                            <h4 className="font-semibold mb-2">Dispute History</h4>
+                            <div className="max-h-40 overflow-y-auto border rounded-lg">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-3 py-2 text-left">Job</th>
+                                            <th className="px-3 py-2 text-left">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {detailModal.disputes.map(d => (
+                                            <tr key={d._id} className="border-t">
+                                                <td className="px-3 py-2">{d.title}</td>
+                                                <td className="px-3 py-2">{d.dispute?.status || 'Unknown'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                 </div>
+                 )
+             )}
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
       </div>
@@ -144,6 +299,14 @@ export default function AdminUsers() {
                             </button>
                           )}
                           
+                          <button
+                            onClick={() => handleViewDetails(user._id)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Details"
+                          >
+                             <Search className="w-4 h-4" />
+                          </button>
+
                           {!user.verification?.adminApproved && (
                              <button 
                                 onClick={() => handleStatusChange(user._id, 'verify_id')}

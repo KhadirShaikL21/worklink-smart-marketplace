@@ -63,18 +63,49 @@ export async function getUsers(req, res) {
   }
 }
 
+export async function getUserDetails(req, res) {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId).select('-passwordHash');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Job Stats
+    const jobsCreated = await Job.countDocuments({ customer: userId });
+    const jobsCompleted = await Job.countDocuments({ 
+      assignedWorkers: userId, 
+      status: 'completed' 
+    });
+
+    // Disputes
+    const disputes = await Job.find({ 
+        $or: [
+            { 'dispute.raisedBy': userId },
+            { customer: userId, 'dispute.status': { $exists: true, $ne: 'open' } }, // Simple filter
+            { assignedWorkers: userId, 'dispute.status': { $exists: true, $ne: 'open' } }
+        ],
+        'dispute.status': { $exists: true }
+    }).select('title dispute status');
+
+    res.json({ user, stats: { jobsCreated, jobsCompleted }, disputes });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user details', error: error.message });
+  }
+}
+
 export async function updateUserStatus(req, res) {
   try {
     const { userId } = req.params;
-    const { action } = req.body; // 'ban', 'unban', 'verify_id'
+    const { action, reason } = req.body; // 'ban', 'unban', 'verify_id', reason for banning
     
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     if (action === 'ban') {
       user.status = 'banned'; 
+      user.blockedReason = reason;
     } else if (action === 'unban') {
       user.status = 'active';
+      user.blockedReason = null;
     } else if (action === 'verify_id') {
       if (!user.verification) user.verification = {};
       user.verification.adminApproved = true;
@@ -146,13 +177,13 @@ export async function resolveDispute(req, res) {
 
     switch (resolution) {
       case 'refund':
-        if (payment) await refundPayment(payment._id);
+        if (payment && payment.status === 'held') await refundPayment(payment._id);
         job.status = 'cancelled';
         job.dispute.resolution = 'refunded';
         break;
       
       case 'release':
-        if (payment) await releasePayouts(payment._id);
+        if (payment && payment.status === 'held') await releasePayouts(payment._id);
         job.status = 'completed';
         job.dispute.resolution = 'released_to_worker';
         break;
@@ -161,6 +192,20 @@ export async function resolveDispute(req, res) {
         // Resume job
         job.status = 'in_progress';
         job.dispute.resolution = 'dismissed';
+        break;
+
+      case 'cancel_no_refund':
+        // Job cancelled, payment might be forfeited or handled manually
+        job.status = 'cancelled';
+        job.dispute.resolution = 'cancelled_no_refund';
+        break;
+
+      case 'reassign':
+        // Remove worker, open job for new applicants
+        job.assignedWorkers = [];
+        job.status = 'open';
+        job.dispute.resolution = 'reassigned';
+        // Notify worker they were removed? (omitted for brevity)
         break;
 
       default:

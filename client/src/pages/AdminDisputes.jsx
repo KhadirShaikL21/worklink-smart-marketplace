@@ -10,32 +10,49 @@ export default function AdminDisputes() {
   const [error, setError] = useState(null);
   const [resolving, setResolving] = useState(false);
 
+  const [resolveModal, setResolveModal] = useState({ isOpen: false, jobId: null, type: 'dismiss', note: '' });
+
   useEffect(() => {
-    fetchDisputes();
-  }, []);
+    if (user?.roles.includes('admin')) {
+        fetchDisputes();
+    }
+  }, [user]);
 
   const fetchDisputes = async () => {
     setLoading(true);
     try {
       // Fetch open disputes
       const res = await api.get('/api/admin/disputes?status=open');
-      setDisputes(res.data.disputes);
+       if (res.data && res.data.disputes) {
+          setDisputes(res.data.disputes);
+       } else {
+          setDisputes([]);
+       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch disputes');
+      console.error(err);
+      setError('Failed to fetch disputes');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResolve = async (jobId, resolution, note = '') => {
-    if (!window.confirm(`Are you sure you want to ${resolution} this dispute?`)) return;
+  const openResolveModal = (jobId) => {
+      setResolveModal({ isOpen: true, jobId, type: 'dismiss', note: '' });
+  };
 
+  const submitResolution = async () => {
+    if (!resolveModal.type) return alert('Select a resolution type');
+    
     setResolving(true);
     try {
-      await api.post(`/api/admin/disputes/${jobId}/resolve`, { resolution, adminNote: note });
+      await api.post(`/api/admin/disputes/${resolveModal.jobId}/resolve`, { 
+          resolution: resolveModal.type, 
+          adminNote: resolveModal.note 
+      });
       // Remove from list
-      setDisputes(prev => prev.filter(d => d.id !== jobId));
-      alert(`Dispute ${resolution} successfully!`);
+      setDisputes(prev => prev.filter(d => d.id !== resolveModal.jobId));
+      setResolveModal({ isOpen: false, jobId: null, type: 'dismiss', note: '' });
+      alert(`Dispute resolved successfully!`);
     } catch (err) {
       alert(`Error resolving dispute: ${err.message}`);
     } finally {
@@ -47,7 +64,63 @@ export default function AdminDisputes() {
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+        {/* Resolve Modal */}
+        {resolveModal.isOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">Resolve Dispute</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Resolution Action</label>
+                            <select 
+                                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-primary-500"
+                                value={resolveModal.type}
+                                onChange={(e) => setResolveModal({ ...resolveModal, type: e.target.value })}
+                            >
+                                <option value="dismiss">Dismiss (Resume Job)</option>
+                                <option value="refund">Refund Customer (Cancel Job)</option>
+                                <option value="release">Release Payment to Worker (Complete Job)</option>
+                                <option value="cancel_no_refund">Cancel Job (No Refund/Forfeit)</option>
+                                <option value="reassign">Reassign Worker (Remove Worker & Reopen)</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {resolveModal.type === 'dismiss' && "Job continues as normal."}
+                                {resolveModal.type === 'refund' && "Money returned to customer. Job cancelled."}
+                                {resolveModal.type === 'release' && "Money sent to worker. Job marked complete."}
+                                {resolveModal.type === 'cancel_no_refund' && "Job cancelled. Money stays on platform/held."}
+                                {resolveModal.type === 'reassign' && "Current worker removed. Job opens for new applications."}
+                            </p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Admin Note (Required)</label>
+                            <textarea 
+                                className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-primary-500 h-24"
+                                placeholder="Explain the reason for this decision..."
+                                value={resolveModal.note}
+                                onChange={(e) => setResolveModal({ ...resolveModal, note: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-3 mt-6">
+                        <button 
+                            onClick={() => setResolveModal({ isOpen: false, jobId: null })}
+                            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={submitResolution}
+                            disabled={resolving || !resolveModal.note}
+                            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                        >
+                            {resolving ? 'Processing...' : 'Confirm Resolution'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
           <AlertTriangle className="w-8 h-8 text-orange-500"/> 
@@ -111,27 +184,10 @@ export default function AdminDisputes() {
                 
                 <div className="border-t border-gray-100 pt-6 flex flex-wrap gap-4 justify-end">
                    <button 
-                     onClick={() => handleResolve(dispute.id, 'refund')}
-                     disabled={resolving}
-                     className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-medium transition-colors"
+                     onClick={() => setResolveModal({ isOpen: true, jobId: dispute.id, type: 'dismiss', note: '' })}
+                     className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium shadow-sm transition-colors"
                    >
-                     <XCircle className="w-4 h-4" />
-                     Refund Customer (Cancel Job)
-                   </button>
-                   <button 
-                     onClick={() => handleResolve(dispute.id, 'dismiss')}
-                     disabled={resolving}
-                     className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition-colors"
-                   >
-                     Dismiss (Resume Job)
-                   </button>
-                   <button 
-                     onClick={() => handleResolve(dispute.id, 'release')}
-                     disabled={resolving}
-                     className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm transition-colors"
-                   >
-                     <CheckCircle className="w-4 h-4" />
-                     Release Payment (Complete Job)
+                     Resolve Dispute
                    </button>
                 </div>
 

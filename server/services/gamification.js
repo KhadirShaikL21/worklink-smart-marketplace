@@ -135,7 +135,7 @@ export async function getLeaderboard(limit = 10) {
     const profiles = await WorkerProfile.find({ isAvailable: true })
       .sort({ reputationPoints: -1, completedJobs: -1 })
       .limit(limit)
-      .populate('user', 'name avatarUrl');
+      .populate('user', 'name avatarUrl ratingStats');
     
     return profiles;
   } catch (error) {
