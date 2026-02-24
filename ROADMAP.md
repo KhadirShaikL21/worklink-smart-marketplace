@@ -56,29 +56,29 @@
   - [x] Backend: Calculate weekly/monthly top workers based on ratings & jobs completed.
   - [x] Frontend: "Top Workers" section on Home/Worker list.
 
-## Phase 7: Advanced Location & Alerts
+## Phase 7: Advanced Location & Alerts (Next Priority)
 
 - [ ] **Geofencing Notifications**
   - [ ] Backend: Calculate distance between Worker and Job location.
   - [ ] Backend: Trigger "Worker Appriving Soon" notification when within 1km.
   - [ ] Frontend: Visual indicator on map (e.g., "Arriving in 5 mins").
 
-## Phase 8: Experience Polish & Globalization
+## Phase 8: Experience Polish & Globalization (Next Priority)
 
 - [ ] **Full Localization Audit**
   - [ ] Review all new AI screens (Job Create, Chat) for missing translations.
   - [ ] Add specific vernacular terms for blue-collar jobs (Hindi, Telugu, etc.).
   - [ ] Testing: Verify language switching persists across reload.
-- [ ] **Admin Dashboard** (System Management)
+- [ ] **Admin Dashboard** (System Management) (Next Priority)
   - [ ] User Management (Ban/Verify users).
   - [ ] Dispute Resolution Center (Admin view).
   - [ ] Platform Analytics (Jobs posted vs completed, Revenue).
 
 ## Phase 9: Advanced Communication (Optional)
 
-- [ ] **Video Consultation**
-  - [ ] Pre-booking video calls for estimates.
-  - [ ] WebRTC integration (PeerJS or Twilio).
+- [x] **Video Consultation**
+  - [x] Pre-booking video calls for estimates.
+  - [x] WebRTC integration (PeerJS or Twilio).
 
 ## Phase 10: Suggested Future Enhancements (AI Proposed)
 

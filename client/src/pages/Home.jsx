@@ -47,9 +47,10 @@ export default function Home() {
   const { t } = useTranslation();
   const [topWorkers, setTopWorkers] = useState([]);
   
-  const heroImage1 = "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?q=80&w=1000&auto=format&fit=crop"; // Factory Worker / Mechanic
-  const heroImage2 = "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1000&auto=format&fit=crop"; // Electrician
-  const featureImage = "https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?q=80&w=1000&auto=format&fit=crop"; // Plumber under sink
+  // Dynamic gritty blue-collar action shots
+  const heroImage1 = "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1000&auto=format&fit=crop"; // Electrician actively wiring
+  const heroImage2 = "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?q=80&w=1000&auto=format&fit=crop"; // Welder with sparks flying
+  const featureImage = "https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=1000&auto=format&fit=crop"; // Mechanic under a car / heavy machinery
 
 
   useEffect(() => {
