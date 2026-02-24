@@ -2,8 +2,15 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { MapPin, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Briefcase, Lock, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare, Phone, ShieldAlert } from 'lucide-react';
+import { 
+  MapPin, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Briefcase, 
+  Lock, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare, 
+  Phone, ShieldAlert, Calendar, ChevronRight, Play, Star, UploadCloud, Banknote
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import clsx from 'clsx';
 import PaymentModal from '../components/PaymentModal';
+import DisputeResolutionModal from '../components/DisputeResolutionModal';
 import JobTrackingMap from '../components/JobTrackingMap';
 import { JobDetailSkeleton } from '../components/ui/Skeleton';
 
@@ -29,8 +36,6 @@ export default function JobDetail() {
   const [timeLeft, setTimeLeft] = useState(60);
   const [timerExpired, setTimerExpired] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
-  const [disputeReason, setDisputeReason] = useState('Payment Issue');
-  const [disputeDesc, setDisputeDesc] = useState('');
 
   // Derived state calculations need to be hoisted or safe-guarded
   const currentUserId = user?._id?.toString();
@@ -45,7 +50,9 @@ export default function JobDetail() {
 
   const formatDateTime = value => {
     if (!value) return '—';
-    return new Date(value).toLocaleString();
+    return new Date(value).toLocaleString('en-IN', {
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+    });
   };
 
   const formatDuration = minutes => {
@@ -109,27 +116,17 @@ export default function JobDetail() {
         professionalism: Number(rating.professionalism),
         review: rating.review
       });
-      setStatusMsg('Rating submitted');
+      setStatusMsg('Rating submitted successfully');
       setRating(r => ({ ...r, review: '' }));
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to rate');
     }
   };
 
-  const handleRaiseDispute = async (e) => {
-    e.preventDefault();
-    try {
-      if (!disputeDesc.trim()) {
-        setError('Please provide a description for the dispute.');
-        return;
-      }
-      await api.post(`/api/jobs/${jobId}/dispute`, { reason: disputeReason, description: disputeDesc });
-      setStatusMsg('Dispute raised successfully. Our support team will contact you.');
-      setShowDisputeModal(false);
-      load();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to raise dispute');
-    }
+  const handleDisputeRaised = () => {
+    setStatusMsg('Dispute raised successfully. Our support team will investigate.');
+    setShowDisputeModal(false);
+    load();
   };
 
   const createPayment = async () => {
@@ -146,8 +143,7 @@ export default function JobDetail() {
   const handlePaymentSuccess = async (paymentIntent) => {
       setShowPaymentModal(false);
       setStatusMsg('Payment successful! Job marked as completed.');
-      // Reload job to get updated status
-      setTimeout(() => load(), 1000); // Small delay to allow webhook to process
+      setTimeout(() => load(), 1000); 
   };
 
   const handleAcceptJob = async () => {
@@ -164,16 +160,8 @@ export default function JobDetail() {
     alert('Initiating secure privacy-preserving call via WorkLink Server... Connecting *******' + (jobRole === 'customer' ? '987' : '123'));
   };
 
-  const getDirections = () => {
-    if (job?.location?.coordinates) {
-      const [long, lat] = job.location.coordinates;
-      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${long}`, '_blank');
-    }
-  };
-
   useEffect(() => {
     let interval;
-    // Only run timer if status is 'assigned' (pending acceptance)
     if (job?.status === 'assigned' && isAssignedWorker && !timerExpired && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft((prev) => {
@@ -222,17 +210,6 @@ export default function JobDetail() {
     }
   };
 
-  const handleSOS = async () => {
-    if (!window.confirm('EMERGENCY: Do you want to trigger SOS? This will alert admins and emergency contacts.')) return;
-    try {
-      await api.post(`/jobs/${jobId}/sos`, {});
-      alert('SOS Signal Sent! Emergency contacts notified.');
-    } catch (err) {
-      console.error(err);
-      alert('Error sending SOS. Please call emergency services directly.');
-    }
-  };
-
   const handleCompleteJob = async (e) => {
     e.preventDefault();
     if (photoFiles.some(f => !f)) {
@@ -243,7 +220,6 @@ export default function JobDetail() {
     setUploading(true);
     setError('');
     try {
-      // Upload Video (Optional)
       let videoUrl = null;
       if (videoFile) {
         const videoFormData = new FormData();
@@ -252,7 +228,6 @@ export default function JobDetail() {
         videoUrl = videoRes.data.url;
       }
 
-      // Upload Photos
       const imageUrls = [];
       for (const file of photoFiles) {
         const photoFormData = new FormData();
@@ -261,11 +236,12 @@ export default function JobDetail() {
         imageUrls.push(photoRes.data.url);
       }
 
-      // Complete Job
       await api.post(`/api/jobs/${jobId}/complete`, { videoUrl, imageUrls });
       setStatusMsg('Job completed successfully! Waiting for customer payment.');
-      navigate('/thank-you');
+      navigate(`/dashboard`); // Or maybe refresh current
+      load();
     } catch (err) {
+      console.error(err)
       setError(err.response?.data?.message || 'Failed to complete job');
     } finally {
       setUploading(false);
@@ -275,26 +251,22 @@ export default function JobDetail() {
   if (!job) return <JobDetailSkeleton />;
 
   const isCompleted = job.status === 'completed';
-  
   const timeline = job.timeline || {};
   const summary = job.summary || {};
-  const payment = job.payment; // Keep undefined if missing
+  const payment = job.payment;
   const completionProof = job.completionProof || {};
+
+  // Date Parsing Helpers
   const toDate = value => {
     if (!value) return null;
-    try {
-      return new Date(value);
-    } catch {
-      return null;
-    }
+    try { return new Date(value); } catch { return null; }
   };
-  const assignedAtDate = toDate(timeline.assignedAt) || (job.status !== 'open' ? toDate(job.createdAt) : null);
-  const completedAtDate = toDate(timeline.completedAt) || (job.status === 'completed' ? toDate(job.updatedAt) : null);
-  
-  // Safe date operations
   const safeTime = (date) => (date instanceof Date && !isNaN(date) ? date.getTime() : 0);
   const isValidDate = (date) => date instanceof Date && !isNaN(date);
 
+  const assignedAtDate = toDate(timeline.assignedAt) || (job.status !== 'open' ? toDate(job.createdAt) : null);
+  const completedAtDate = toDate(timeline.completedAt) || (job.status === 'completed' ? toDate(job.updatedAt) : null);
+  
   const inferredStartedFromWork = isValidDate(completedAtDate) && typeof summary.workDurationMinutes === 'number'
     ? new Date(safeTime(completedAtDate) - summary.workDurationMinutes * 60000)
     : null;
@@ -327,15 +299,35 @@ export default function JobDetail() {
         if (typeof minutes !== 'number') return acc;
         return (acc || 0) + minutes;
       }, null));
-  const workerNameFor = workerId => {
-    if (!workerId) return 'Worker';
-    const id = workerId.toString();
-    const match = assignedWorkers.find(w => w && (w._id || w).toString() === id);
-    return match?.name || 'Worker';
+
+  const StatusBadge = ({ status }) => {
+    const config = {
+      open: { bg: 'bg-blue-50', text: 'text-blue-700', icon: Briefcase },
+      assigned: { bg: 'bg-yellow-50', text: 'text-yellow-700', icon: Clock },
+      accepted: { bg: 'bg-purple-50', text: 'text-purple-700', icon:CheckCircle },
+      en_route: { bg: 'bg-indigo-50', text: 'text-indigo-700', icon: Navigation },
+      in_progress: { bg: 'bg-orange-50', text: 'text-orange-700', icon: HammerIcon },
+      completed: { bg: 'bg-green-50', text: 'text-green-700', icon: CheckCircle },
+      cancelled: { bg: 'bg-red-50', text: 'text-red-700', icon: ShieldAlert },
+    };
+    const Conf = config[status] || config.open;
+    const Icon = Conf.icon;
+
+    return (
+      <span className={clsx("inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ring-1 ring-inset", Conf.bg, Conf.text, "ring-gray-500/10")}>
+        <Icon className="w-3.5 h-3.5 mr-1.5" />
+        {status.replace('_', ' ').toUpperCase()}
+      </span>
+    );
   };
 
+// Replace HammerIcon which was possibly undefined
+const HammerIcon = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9"/><path d="M17.64 15 22 10.64"/><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.25V7.86c0-.55-.45-1-1-1H16.4c-.84 0-1.65-.33-2.25-.93L12.9 4.68c-.6-.6-1.4-.93-2.25-.93H4.86c-.55 0-1 .45-1 1v6.78c0 .84.33 1.65.93 2.25L12 21"/></svg>
+  );
+
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50/50 pb-20">
       <PaymentModal 
         isOpen={showPaymentModal} 
         onClose={() => setShowPaymentModal(false)} 
@@ -343,765 +335,337 @@ export default function JobDetail() {
         onSuccess={handlePaymentSuccess}
       />
 
-      {showDisputeModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Background overlay */}
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowDisputeModal(false)}></div>
-            </div>
+      <DisputeResolutionModal 
+        isOpen={showDisputeModal} 
+        onClose={() => setShowDisputeModal(false)}
+        jobId={jobId}
+        onDisputeRaised={handleDisputeRaised}
+      />
 
-            {/* This element is to trick the browser into centering the modal contents. */}
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            
-            <div 
-              className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full relative z-10"
-              onClick={(e) => e.stopPropagation()}
+      {/* Header Banner */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <motion.div 
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
             >
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <ShieldAlert className="h-6 w-6 text-red-600" />
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                      Raise a Dispute
-                    </h3>
-                    <div className="mt-2 text-sm text-gray-500 mb-4">
-                      <p>If you're facing issues with this job or payment, please let us know. Our team will investigate.</p>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Reason</label>
-                        <select
-                          value={disputeReason}
-                          onChange={(e) => setDisputeReason(e.target.value)}
-                          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm rounded-md"
-                        >
-                          <option value="Payment Issue">Payment Issue</option>
-                          <option value="Incomplete Work">Incomplete Work</option>
-                          <option value="Poor Quality">Poor Quality</option>
-                          <option value="Unprofessional Behavior">Unprofessional Behavior</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Description</label>
-                        <textarea
-                          rows={3}
-                          className="mt-1 shadow-sm focus:ring-red-500 focus:border-red-500 block w-full sm:text-sm border border-gray-300 rounded-md"
-                          placeholder="Please provide more details..."
-                          value={disputeDesc}
-                          onChange={(e) => setDisputeDesc(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={handleRaiseDispute}
-                >
-                  Submit Dispute
-                </button>
-                <button
-                  type="button"
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={() => setShowDisputeModal(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {statusMsg && (
-        <div className="mb-4 p-4 rounded-md bg-green-50 border border-green-200">
-          <p className="text-sm text-green-800">{statusMsg}</p>
-        </div>
-      )}
-      {error && (
-        <div className="mb-4 p-4 rounded-md bg-red-50 border border-red-200">
-          <p className="text-sm text-red-800">{error}</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Content */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex justify-between items-start">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{job.title}</h1>
-                <div className="flex items-center mt-2 text-sm text-gray-500 space-x-4">
-                  <span className="flex items-center">
-                    <Briefcase className="w-4 h-4 mr-1" />
-                    {job.category}
-                  </span>
-                  <span
-                    className={`flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      job.urgency === 'emergency'
-                        ? 'bg-red-100 text-red-800'
-                        : job.urgency === 'high'
-                          ? 'bg-orange-100 text-orange-800'
-                          : 'bg-blue-100 text-blue-800'
-                    }`}
-                  >
-                    {job.urgency.charAt(0).toUpperCase() + job.urgency.slice(1)}
-                  </span>
-                  <span className="flex items-center">
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    {job.status}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <h3 className="text-lg font-medium text-gray-900">Description</h3>
-              <p className="mt-2 text-gray-600 whitespace-pre-wrap">{job.description}</p>
-            </div>
-
-            {job.media?.problemVideoUrl && (
-              <div className="mt-6">
-                <h3 className="text-lg font-medium text-gray-900">Problem Video</h3>
-                <div className="mt-2 rounded-lg overflow-hidden bg-black aspect-video">
-                  <video
-                    src={job.media.problemVideoUrl}
-                    controls
-                    className="w-full h-full"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6">
-              <h3 className="text-lg font-medium text-gray-900">Required Skills</h3>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {(job.skillsRequired || []).map((skill, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800"
-                  >
-                    {skill}
-                  </span>
-                ))}
-                {(job.skillsRequired || []).length === 0 && (
-                  <span className="text-sm text-gray-500">No specific skills listed.</span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {!isCompleted && (
-            <div className="bg-white rounded-xl shadow-sm border mb-6 border-gray-100 p-6">
-              <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
-                <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                  <MapPin className="w-5 h-5 mr-2 text-primary-600" />
-                  {job.status === 'assigned' ? 'Job Status' : 'Live Location Tracking'}
-                </h3>
-
-                {/* Worker: Accept Status */}
-                {isAssignedWorker && job.status === 'assigned' && (
-                   <div className="flex items-center gap-3">
-                      <div className={`text-sm font-bold flex items-center ${timeLeft < 20 ? 'text-red-600 animate-pulse' : 'text-gray-700'}`}>
-                        <Clock className="w-4 h-4 mr-1" />
-                        {timerExpired ? 'Expired' : `${timeLeft}s remaining`}
-                      </div>
-                      <button
-                        onClick={handleAcceptJob}
-                        disabled={timerExpired}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
-                      >
-                        Accept Work
-                      </button>
-                   </div>
-                )}
-                
-                {/* Customer: Waiting Status */}
-                {isCustomer && job.status === 'assigned' && (
-                   <span className="text-sm font-medium text-orange-600 animate-pulse flex items-center">
-                     <Clock className="w-4 h-4 mr-1" />
-                     Waiting for worker to accept...
-                   </span>
-                )}
-
-                {/* Worker: Actions after acceptance */}
-                {isAssignedWorker && (job.status === 'accepted' || job.status === 'en_route') && (
-                  <div className="flex gap-2">
-                     <a
-                        href={`https://www.google.com/maps/dir/?api=1&destination=${job.location?.coordinates?.[1]},${job.location?.coordinates?.[0]}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
-                      >
-                        <MapPin className="w-4 h-4 mr-2" />
-                        Get Directions
-                      </a>
-                      <button
-                        onClick={handleSecureCall}
-                        className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                      >
-                        <Phone className="w-4 h-4 mr-2" />
-                        Secure Call
-                      </button>
-                      {job.status === 'accepted' && (
-                        <button
-                          onClick={startTravel}
-                          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Navigation className="w-4 h-4 mr-2" />
-                          Start Travel
-                        </button>
-                      )}
-                  </div>
-                )}
-                
-                {/* Customer: Call Worker */}
-                {isCustomer && (job.status === 'accepted' || job.status === 'en_route' || job.status === 'in_progress') && (
-                   <button
-                    onClick={handleSecureCall}
-                    className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    <Phone className="w-4 h-4 mr-2" />
-                    Call Worker
-                  </button>
-                )}
-
-                {job.status === 'en_route' && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800 animate-pulse">
-                    Worker En Route
-                  </span>
-                )}
-              </div>
-              {/* Only show map if NOT assigned (i.e. accepted/en_route) */}
-              {job.status !== 'assigned' && <JobTrackingMap job={job} userRole={jobRole} />}
-            </div>
-          )}
-
-          {(isCompleted || travelStartedAtDate || startedAtDate || completedAtDate) && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Completion Overview</h3>
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
-                  <dt className="font-medium text-gray-500">Assigned</dt>
-                  <dd className="mt-1 text-gray-900">{formatDateTime(assignedAtDate)}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-gray-500">Travel Started</dt>
-                  <dd className="mt-1 text-gray-900">{formatDateTime(travelStartedAtDate)}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-gray-500">Work Started</dt>
-                  <dd className="mt-1 text-gray-900">{formatDateTime(startedAtDate)}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-gray-500">Completed</dt>
-                  <dd className="mt-1 text-gray-900">{formatDateTime(completedAtDate)}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-gray-500">Travel Duration</dt>
-                  <dd className="mt-1 text-gray-900">{formatDuration(travelDurationMinutes)}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-gray-500">Work Duration</dt>
-                  <dd className="mt-1 text-gray-900">{formatDuration(workDurationMinutes)}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-gray-500">Total Time</dt>
-                  <dd className="mt-1 text-gray-900">{formatDuration(totalDurationMinutes)}</dd>
-                </div>
-              </dl>
-            </div>
-          )}
-
-          {isCompleted && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Proof of Work</h3>
-              {completionProof.videoUrl ? (
-                <div className="mb-6 aspect-video bg-black rounded-lg overflow-hidden">
-                  <video src={completionProof.videoUrl} controls className="w-full h-full" />
-                </div>
-              ) : null}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {(completionProof.imageUrls || []).map((url, idx) => (
-                  <div key={idx} className="relative h-32 rounded-lg overflow-hidden border border-gray-200">
-                    <img src={url} alt={`Proof ${idx + 1}`} className="w-full h-full object-cover" />
-                  </div>
-                ))}
-                {(!completionProof.imageUrls || completionProof.imageUrls.length === 0) && (
-                  <p className="text-sm text-gray-500">No proof images uploaded.</p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {isCompleted && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Financial Summary</h3>
-              {payment ? (
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <dt className="font-medium text-gray-500">Total Payment</dt>
-                    <dd className="mt-1 text-gray-900 flex items-center gap-2">
-                      <IndianRupee className="w-4 h-4 text-gray-400" />
-                      {payment?.total} {payment?.currency}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-gray-500">Payment Status</dt>
-                    <dd className="mt-1 text-gray-900 capitalize">{payment?.status ? payment.status.replace(/_/g, ' ') : 'Unknown'}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-gray-500">Updated</dt>
-                    <dd className="mt-1 text-gray-900">{formatDateTime(payment?.updatedAt)}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-medium text-gray-500">Platform Fee</dt>
-                    <dd className="mt-1 text-gray-900">{payment?.platformFeePct ?? '—'}%</dd>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <dt className="font-medium text-gray-500 mb-2">Payees</dt>
-                    <ul className="space-y-2">
-                      {(payment?.payees || []).map((p, idx) => (
-                        <li key={idx} className="flex justify-between text-gray-700 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
-                          <span>{workerNameFor(p?.worker)} {p?.status ? `(${p.status.replace(/_/g, ' ')})` : ''}</span>
-                          <span>{p?.amount} {payment?.currency}</span>
-                        </li>
-                      ))}
-                      {(payment?.payees || []).length === 0 && (
-                        <li className="text-sm text-gray-500">No payouts recorded yet.</li>
-                      )}
-                    </ul>
-                  </div>
-                </dl>
-              ) : (
-                <p className="text-sm text-gray-600">Payment intent not created yet. Customer can initiate payment from the Actions panel.</p>
-              )}
-            </div>
-          )}
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
-            <div className="flex flex-wrap gap-4">
-              {chatRoomId && job.status !== 'open' && (isCustomer || isAssignedWorker) && (
-                <button
-                  onClick={() => navigate(`/chat?roomId=${chatRoomId}`)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Open Team Chat
-                </button>
-              )}
-
-              {isCustomer && (
-                <>
-                  {job.status === 'open' && (
-                    <button
-                      onClick={() => navigate(`/jobs/${jobId}/matching`)}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                    >
-                      <User className="w-4 h-4 mr-2" />
-                      Find Matches
-                    </button>
-                  )}
-
-                  <button
-                    onClick={createPayment}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                  >
-                    <IndianRupee className="w-4 h-4 mr-2" />
-                    {payment ? 'Manage Payment' : 'Create Payment'}
-                  </button>
-                </>
-              )}
-
-              {(isCustomer || isAssignedWorker) && job.status !== 'completed' && job.status !== 'cancelled' && (
-                <button
-                  onClick={() => setShowDisputeModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                >
-                  <ShieldAlert className="w-4 h-4 mr-2" />
-                  Raise Dispute
-                </button>
-              )}
-            </div>
-          </div>
-
-          {isAssignedWorker && job.status === 'in_progress' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-green-600" />
-                Complete Job & Upload Proof
-              </h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Please upload proof of work to complete this job. 3 photos are mandatory.
-              </p>
-
-              <form onSubmit={handleCompleteJob} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Photo Proof (3 Required)</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {[0, 1, 2].map(idx => (
-                      <div key={idx} className="relative group">
-                        <div
-                          className={`relative border-2 border-dashed rounded-lg h-32 flex flex-col items-center justify-center transition-colors ${
-                            photoFiles[idx] ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
-                          }`}
-                        >
-                          {photoFiles[idx] ? (
-                            <>
-                              <img
-                                src={URL.createObjectURL(photoFiles[idx])}
-                                alt="Preview"
-                                className="absolute inset-0 w-full h-full object-cover rounded-lg opacity-80"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const newFiles = [...photoFiles];
-                                    newFiles[idx] = null;
-                                    setPhotoFiles(newFiles);
-                                  }}
-                                  className="opacity-0 group-hover:opacity-100 bg-red-500 text-white p-1 rounded-full transform scale-90 group-hover:scale-100 transition-all"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
-                              </div>
-                            </>
-                          ) : (
-                            <label htmlFor={`photo-${idx}`} className="cursor-pointer w-full h-full flex flex-col items-center justify-center">
-                              <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
-                              <span className="text-xs text-gray-500 font-medium">Upload Photo {idx + 1}</span>
-                              <input
-                                id={`photo-${idx}`}
-                                type="file"
-                                accept="image/*"
-                                className="sr-only"
-                                onChange={e => {
-                                  if (e.target.files[0]) {
-                                    const newFiles = [...photoFiles];
-                                    newFiles[idx] = e.target.files[0];
-                                    setPhotoFiles(newFiles);
-                                  }
-                                }}
-                              />
-                            </label>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Video Upload */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Video Proof (Optional)</label>
-                  <div
-                    className={`mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-colors ${
-                      videoFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="space-y-1 text-center">
-                      {videoFile ? (
-                        <div className="flex items-center justify-center space-x-2">
-                          <Video className="h-8 w-8 text-green-600" />
-                          <div className="text-left">
-                            <p className="text-sm font-medium text-gray-900 truncate max-w-xs">{videoFile.name}</p>
-                            <button
-                              type="button"
-                              onClick={() => setVideoFile(null)}
-                              className="text-xs text-red-600 hover:text-red-800 font-medium"
-                            >
-                              Remove video
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <Video className="mx-auto h-12 w-12 text-gray-400" />
-                          <div className="flex text-sm text-gray-600 justify-center">
-                            <label htmlFor="video-upload" className="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none">
-                              <span>Upload a video</span>
-                              <input id="video-upload" name="video-upload" type="file" accept="video/*" className="sr-only" onChange={e => setVideoFile(e.target.files[0])} />
-                            </label>
-                            <p className="pl-1">or drag and drop</p>
-                          </div>
-                          <p className="text-xs text-gray-500">MP4, MOV up to 50MB</p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <button
-                    type="submit"
-                    disabled={uploading}
-                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {uploading ? (
-                      <>
-                        <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
-                        Uploading Proof...
-                      </>
-                    ) : (
-                      'Submit Proof & Complete Job'
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {isCustomer && (job.status === 'assigned' || job.status === 'in_progress' || job.status === 'completed') && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Job Completion</h3>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={() => markSatisfaction('satisfied')}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                >
-                  <CheckCircle className="w-4 h-4 mr-2" />
-                  Satisfied
-                </button>
-                <button
-                  onClick={() => markSatisfaction('not_satisfied')}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
-                >
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  Not Satisfied
-                </button>
-                <button
-                  onClick={() => markSatisfaction('needs_fix')}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Needs Fix
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Journey & Verification Section */}
-          {(job.status === 'accepted' || job.status === 'en_route') && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-               {/* 1. Worker needs to mark arrival first */}
-               {isAssignedWorker && job.status === 'en_route' && !job.timeline?.arrivedAt && (
-                  <div className="text-center">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center justify-center">
-                      <Navigation className="w-5 h-5 mr-2 text-blue-600" />
-                      Arrived at Location?
-                    </h3>
-                    <button
-                      onClick={markArrived}
-                      className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      Yes, I have Reached Destination
-                    </button>
-                    <p className="mt-2 text-xs text-gray-500">Tap only when you are at the customer's location.</p>
-                  </div>
-               )}
-
-               {/* 2. OTP Verification Section (Shown if Accept/Arrived) */}
-               {/* Show OTP only if: 
-                   - Is Customer (Always show code)
-                   - Is Worker AND (Status is Accepted OR (En Route AND Arrived)) 
-                   Wait, user said 'reached destination after displayed when he start travel', implying sequence: Accepted -> Start Travel -> En Route -> Reached -> OTP.
-                   So if status is accepted, worker sees 'Start Travel' button elsewhere (in Actions).
-                   If En Route, worker should mark Arrived.
-                   So OTP input should show ONLY if Arrived.
-               */}
-               {((isCustomer) || (isAssignedWorker && (job.status === 'en_route' && job.timeline?.arrivedAt) || job.status === 'in_progress')) && (
-                 <>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-                      <Lock className="w-5 h-5 mr-2 text-primary-600" />
-                      Start Job Verification
-                    </h3>
-                    
-                    {isCustomer && (
-                      <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
-                        <p className="text-sm text-blue-800 mb-2">Share this code with the worker when they arrive:</p>
-                        <div className="text-3xl font-bold text-blue-900 tracking-widest">{job.startOtp}</div>
-                        {job.status === 'en_route' && !job.timeline?.arrivedAt && (
-                           <p className="mt-2 text-xs text-orange-600 flex items-center justify-center">
-                             <Navigation className="w-3 h-3 mr-1" />
-                             Worker is en route
-                           </p>
-                        )}
-                         {job.status === 'en_route' && job.timeline?.arrivedAt && (
-                           <p className="mt-2 text-xs text-green-600 flex items-center justify-center">
-                             <MapPin className="w-3 h-3 mr-1" />
-                             Worker has arrived!
-                           </p>
-                        )}
-                      </div>
-                    )}
-
-                    {isAssignedWorker && (
-                      <form onSubmit={startJob} className="space-y-3">
-                        <p className="text-sm text-gray-600">You have arrived! Ask customer for the code:</p>
-                        <input
-                          type="text"
-                          maxLength={4}
-                          value={otp}
-                          onChange={e => setOtp(e.target.value)}
-                          placeholder="Enter 4-digit OTP"
-                          className="block w-full text-center text-2xl tracking-widest rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
-                        />
-                        <button
-                          type="submit"
-                          disabled={starting || otp.length !== 4}
-                          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-gray-300"
-                        >
-                          {starting ? 'Verifying...' : 'Start Job'}
-                        </button>
-                      </form>
-                    )}
-                 </>
-               )}
-            </div>
-          )}
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Job Details</h3>
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Budget</dt>
-                <dd className="mt-1 text-sm text-gray-900 flex items-center">
-                  <IndianRupee className="w-4 h-4 mr-1 text-gray-400" />
-                  {job.budget?.min} - {job.budget?.max} {job.budget?.currency}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Estimated Hours</dt>
-                <dd className="mt-1 text-sm text-gray-900 flex items-center">
-                  <Clock className="w-4 h-4 mr-1 text-gray-400" />
-                  {job.hoursEstimate ? `${job.hoursEstimate} hours` : 'Not specified'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Location</dt>
-                <dd className="mt-1 text-sm text-gray-900 flex flex-col">
-                  {job.location?.coordinates && (
-                     <div className="flex items-center">
-                       <MapPin className="w-4 h-4 mr-1 text-gray-400" />
-                       <span className="truncate">
-                        {job.location.coordinates[1].toFixed(4)}, {job.location.coordinates[0].toFixed(4)}
+                   <div className="flex items-center gap-3 mb-3">
+                       <StatusBadge status={job.status} />
+                       <span className={clsx(
+                           "px-2.5 py-0.5 rounded-full text-xs font-medium ring-1 ring-inset",
+                           job.urgency === 'emergency' ? 'bg-red-50 text-red-700 ring-red-600/10' :
+                           job.urgency === 'high' ? 'bg-orange-50 text-orange-700 ring-orange-600/10' :
+                           'bg-blue-50 text-blue-700 ring-blue-600/10'
+                       )}>
+                           {job.urgency.toUpperCase()}
                        </span>
-                     </div>
-                  )}
-                  {/* Fallback if address is missing */}
-                  <span className="text-xs text-gray-500 ml-5">
-                    (Click map to view precise location)
-                  </span>
-                </dd>
-              </div>
-            </dl>
-          </div>
+                   </div>
+                   <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{job.title}</h1>
+                   <div className="flex flex-wrap items-center gap-4 mt-3 text-sm text-gray-500">
+                       <span className="flex items-center"><MapPin className="w-4 h-4 mr-1.5" /> {job.location?.address}</span>
+                       <span className="flex items-center"><Calendar className="w-4 h-4 mr-1.5" /> Posted {formatDateTime(job.createdAt)}</span>
+                       <span className="flex items-center"><Briefcase className="w-4 h-4 mr-1.5" /> {job.category}</span>
+                   </div>
+                </div>
 
-          {/* Rate Worker - Only visible after completion */}
-          {job.status === 'completed' && isCustomer && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Rate Worker</h3>
-              <form onSubmit={submitRating} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Worker</label>
-                  {assignedWorkers && assignedWorkers.length > 0 ? (
-                    <select
-                      value={rating.workerId}
-                      onChange={e => setRating({ ...rating, workerId: e.target.value })}
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                    >
-                      <option value="">Select a worker</option>
-                      {assignedWorkers.map(w => (
-                        <option key={w._id || w} value={w._id || w}>
-                          {w.name || 'Worker'} {w.email ? `(${w.email})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input 
-                      type="text" 
-                      value={rating.workerId} 
-                      onChange={e => setRating({ ...rating, workerId: e.target.value })} 
-                      required 
-                      placeholder="Enter Worker ID"
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                    />
-                  )}
+                <div className="flex flex-col items-end gap-3">
+                    <div className="text-2xl font-bold text-gray-900">
+                        ₹{job.budget?.min} - ₹{job.budget?.max}
+                    </div>
+                    {/* Action Buttons */}
+                    <div className="flex gap-3">
+                        {chatRoomId && job.status !== 'open' && (isCustomer || isAssignedWorker) && (
+                            <button onClick={() => navigate(`/chat?roomId=${chatRoomId}`)} className="btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-sm font-semibold text-gray-700">
+                                <MessageSquare className="w-4 h-4" /> Team Chat
+                            </button>
+                        )}
+                        {(isCustomer || isAssignedWorker) && !['completed', 'cancelled'].includes(job.status) && (
+                            <button onClick={handleSecureCall} className="btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-sm font-semibold text-gray-700">
+                                <Phone className="w-4 h-4" /> Call
+                            </button>
+                        )}
+                         {(isCustomer || isAssignedWorker) && !['completed', 'cancelled'].includes(job.status) && (
+                            <button onClick={() => setShowDisputeModal(true)} className="btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-red-200 shadow-sm hover:bg-red-50 text-sm font-semibold text-red-600">
+                                <ShieldAlert className="w-4 h-4" /> Dispute
+                            </button>
+                        )}
+                    </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500">Punctuality</label>
-                    <input 
-                      type="number" min="1" max="5" 
-                      value={rating.punctuality} 
-                      onChange={e => setRating({ ...rating, punctuality: e.target.value })} 
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500">Quality</label>
-                    <input 
-                      type="number" min="1" max="5" 
-                      value={rating.quality} 
-                      onChange={e => setRating({ ...rating, quality: e.target.value })} 
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500">Professionalism</label>
-                    <input 
-                      type="number" min="1" max="5" 
-                      value={rating.professionalism} 
-                      onChange={e => setRating({ ...rating, professionalism: e.target.value })} 
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Review</label>
-                  <textarea 
-                    rows={3} 
-                    value={rating.review} 
-                    onChange={e => setRating({ ...rating, review: e.target.value })} 
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  />
-                </div>
-                <button 
-                  type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-                >
-                  Submit Rating
-                </button>
-              </form>
-            </div>
-          )}
+            </motion.div>
         </div>
       </div>
-      
-      {/* SOS Button */}
-      {(job.status === 'in_progress' || job.status === 'en_route') && (isCustomer || isAssignedWorker) && (
-        <button
-          onClick={handleSOS}
-          title="EMERGENCY SOS"
-          className="fixed bottom-32 right-6 p-4 rounded-full bg-red-600 text-white shadow-lg hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-300 animate-pulse z-40"
-        >
-          <AlertTriangle className="w-8 h-8" />
-        </button>
-      )}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Left Column - Main Details */}
+            <div className="lg:col-span-2 space-y-6">
+                 {/* Status Messages */}
+                <AnimatePresence>
+                    {(statusMsg || error) && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                            {statusMsg && <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm font-medium flex items-center"><CheckCircle className="w-4 h-4 mr-2" />{statusMsg}</div>}
+                            {error && <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-sm font-medium flex items-center"><ShieldAlert className="w-4 h-4 mr-2" />{error}</div>}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Tracking & Map */}
+                {job.status !== 'open' && job.status !== 'assigned' && !isCompleted && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-1 overflow-hidden">
+                        <JobTrackingMap job={job} userRole={jobRole} />
+                    </div>
+                )}
+
+                {/* Worker Specific Actions Card */}
+                {isAssignedWorker && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                         <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                            <h3 className="font-semibold text-gray-900">Your Tasks</h3>
+                            {timeLeft > 0 && job.status === 'assigned' && (
+                                <span className={clsx("text-xs font-bold px-2 py-1 rounded-md", timeLeft < 20 ? "bg-red-100 text-red-700 animate-pulse" : "bg-gray-200 text-gray-700")}>
+                                     {timerExpired ? 'Expired' : `${timeLeft}s left to accept`}
+                                </span>
+                            )}
+                         </div>
+                         <div className="p-6">
+                            {job.status === 'assigned' && (
+                                <div className="text-center py-6">
+                                    <Clock className="w-12 h-12 text-primary-200 mx-auto mb-3" />
+                                    <h4 className="text-lg font-medium text-gray-900">Job Assigned to You</h4>
+                                    <p className="text-gray-500 mb-6">Please accept promptly to secure this job.</p>
+                                    <button onClick={handleAcceptJob} disabled={timerExpired} className="w-full sm:w-auto px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold shadow-lg shadow-green-600/20 disabled:bg-gray-300 disabled:shadow-none transition-all">
+                                        Accept Job
+                                    </button>
+                                </div>
+                            )}
+
+                            {job.status === 'accepted' && (
+                                 <div className="flex gap-4">
+                                     <button onClick={startTravel} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2">
+                                         <Navigation className="w-5 h-5" /> Start Travel
+                                     </button>
+                                     <a href={`https://www.google.com/maps/dir/?api=1&destination=${job.location?.coordinates?.[1]},${job.location?.coordinates?.[0]}`} target="_blank" rel="noreferrer" className="flex-1 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 flex items-center justify-center gap-2">
+                                         <MapPin className="w-5 h-5" /> Directions
+                                     </a>
+                                 </div>
+                            )}
+
+                            {job.status === 'en_route' && (
+                                <div className="text-center">
+                                    <p className="text-gray-600 mb-4">You are on the way. Mark arrived when you reach the location.</p>
+                                    <button onClick={markArrived} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 shadow-lg shadow-indigo-600/20">
+                                        I Have Arrived
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Job Start OTP Input */}
+                            {job.status === 'arrived' && (
+                                <div className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
+                                    <h4 className="text-indigo-900 font-semibold mb-2">Start Job</h4>
+                                    <p className="text-sm text-indigo-700 mb-4">Ask customer for the OTP to begin work.</p>
+                                    <form onSubmit={startJob} className="flex gap-3">
+                                        <input 
+                                            type="text" 
+                                            maxLength={6} 
+                                            placeholder="Enter 6-digit OTP" 
+                                            value={otp} 
+                                            onChange={e => setOtp(e.target.value)}
+                                            className="flex-1 rounded-xl border-gray-200 focus:ring-indigo-500 focus:border-indigo-500 text-center font-mono text-lg tracking-widest"
+                                        />
+                                        <button type="submit" disabled={starting || otp.length < 4} className="px-6 py-2 bg-indigo-600 text-white rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50">
+                                            {starting ? <Loader2 className="animate-spin w-5 h-5" /> : 'Start'}
+                                        </button>
+                                    </form>
+                                </div>
+                            )}
+
+                            {/* Completion Form */}
+                            {job.status === 'in_progress' && (
+                                <div className="space-y-6">
+                                     <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-blue-800 text-sm">
+                                         Job is in progress. Once done, upload proof to complete.
+                                     </div>
+                                     <form onSubmit={handleCompleteJob}>
+                                         <div className="grid grid-cols-3 gap-4 mb-6">
+                                             {[0, 1, 2].map(idx => (
+                                                 <label key={idx} className={clsx("aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors relative overflow-hidden", photoFiles[idx] ? "border-green-500 bg-green-50" : "border-gray-300 hover:border-sidebar-primary/50 hover:bg-gray-50")}>
+                                                     {photoFiles[idx] ? (
+                                                         <img src={URL.createObjectURL(photoFiles[idx])} alt="preview" className="absolute inset-0 w-full h-full object-cover" />
+                                                     ) : (
+                                                         <>
+                                                            <CameraIcon className="w-6 h-6 text-gray-400 mb-1" />
+                                                            <span className="text-xs text-gray-500">Photo {idx+1}</span>
+                                                         </>
+                                                     )}
+                                                     <input type="file" accept="image/*" className="hidden" onChange={e => {
+                                                         const newFiles = [...photoFiles];
+                                                         newFiles[idx] = e.target.files[0];
+                                                         setPhotoFiles(newFiles);
+                                                     }} />
+                                                 </label>
+                                             ))}
+                                         </div>
+                                         <button type="submit" disabled={uploading} className="w-full py-4 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 shadow-lg shadow-green-600/20 flex items-center justify-center gap-2">
+                                             {uploading ? <Loader2 className="animate-spin w-5 h-5"/> : <CheckCircle className="w-5 h-5" />}
+                                             Complete Job
+                                         </button>
+                                     </form>
+                                </div>
+                            )}
+                         </div>
+                    </div>
+                )}
+
+                 {/* Customer Specific Actions */}
+                {isCustomer && (
+                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+                         <h3 className="font-semibold text-gray-900 border-b border-gray-100 pb-3">Actions Required</h3>
+                         
+                         {job.status === 'open' && (
+                             <button onClick={() => navigate(`/jobs/${jobId}/matching`)} className="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 shadow-md flex items-center justify-center gap-2">
+                                 <User className="w-5 h-5" /> Find Qualified Workers
+                             </button>
+                         )}
+
+                         {/* OTP Display for Customer */}
+                         {job.status === 'arrived' && (
+                            <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center justify-between">
+                                <div>
+                                    <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Start Code</span>
+                                    <div className="text-2xl font-mono font-bold text-indigo-900 mt-1">{job.otp || '****'}</div>
+                                    <p className="text-xs text-indigo-700 mt-1">Share this with worker only when they arrive.</p>
+                                </div>
+                                <ShieldAlert className="w-8 h-8 text-indigo-300" />
+                            </div>
+                         )}
+
+                         {/* Payment Action */}
+                         {(job.status === 'completed' || (!payment && job.status === 'in_progress')) && (
+                             <button onClick={createPayment} className="w-full py-3 bg-gray-900 text-white rounded-xl font-semibold hover:bg-gray-800 shadow-md flex items-center justify-center gap-2">
+                                 <Banknote className="w-5 h-5" /> {payment ? 'View Payment Details' : 'Process Payment'}
+                             </button>
+                         )}
+                     </div>
+                )}
+                
+                {/* Description Card */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Description</h3>
+                    <p className="text-gray-600 whitespace-pre-wrap leading-relaxed">{job.description}</p>
+                    
+                    {/* Skills */}
+                    <div className="mt-6">
+                        <h4 className="text-sm font-semibold text-gray-900 mb-3">Required Skills</h4>
+                        <div className="flex flex-wrap gap-2">
+                            {(job.skillsRequired || []).map((skill, i) => (
+                                <span key={i} className="px-3 py-1 bg-gray-100 text-gray-600 text-sm rounded-lg font-medium">{skill}</span>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Problem Video */}
+                    {job.media?.problemVideoUrl && (
+                         <div className="mt-6">
+                            <h4 className="text-sm font-semibold text-gray-900 mb-3">Video Note</h4>
+                            <div className="rounded-xl overflow-hidden bg-black aspect-video relative group cursor-pointer">
+                                <video src={job.media.problemVideoUrl} controls className="w-full h-full" />
+                            </div>
+                         </div>
+                    )}
+                </div>
+
+                {/* Proof of Completion */}
+                {isCompleted && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                         <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600"/> Proof of Work</h3>
+                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                             {(completionProof.imageUrls || []).map((url, i) => (
+                                 <div key={i} className="rounded-lg overflow-hidden border border-gray-200 aspect-square">
+                                     <img src={url} alt="Proof" className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                                 </div>
+                             ))}
+                         </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Right Column - Info Sidebar */}
+            <div className="space-y-6">
+                 {/* Assigned Worker/Customer Info */}
+                 {(isCustomer && job.assignedWorkers?.length > 0) && (
+                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                         <h3 className="font-bold text-gray-900 mb-4">Assigned Professional</h3>
+                         {job.assignedWorkers.map(worker => (
+                             <div key={worker._id} className="flex items-center gap-4">
+                                 <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-lg">
+                                     {worker.name[0]}
+                                 </div>
+                                 <div className="flex-1 min-w-0">
+                                     <h4 className="font-semibold text-gray-900 truncate">{worker.name}</h4>
+                                     <div className="flex items-center text-sm text-yellow-500">
+                                         <Star className="w-3.5 h-3.5 fill-current" />
+                                         <span className="ml-1 text-gray-600 font-medium">4.8 (120 reviews)</span>
+                                     </div>
+                                 </div>
+                             </div>
+                         ))}
+                     </div>
+                 )}
+
+                 {/* Timeline / Progress */}
+                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                     <h3 className="font-bold text-gray-900 mb-6">Job Timeline</h3>
+                     <div className="relative pl-4 border-l-2 border-gray-100 space-y-8">
+                         {[
+                             { label: 'Job Posted', date: job.createdAt, active: true },
+                             { label: 'Assigned', date: timeline.assignedAt, active: !!timeline.assignedAt },
+                             { label: 'Travel Started', date: timeline.travelStartedAt, active: !!timeline.travelStartedAt },
+                             { label: 'Work Started', date: timeline.startedAt, active: !!timeline.startedAt },
+                             { label: 'Completed', date: timeline.completedAt, active: !!timeline.completedAt },
+                         ].map((step, i) => (
+                             <div key={i} className="relative">
+                                 <div className={clsx("absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2", step.active ? "bg-primary-600 border-primary-600" : "bg-white border-gray-300")} />
+                                 <p className={clsx("text-sm font-medium leading-none", step.active ? "text-gray-900" : "text-gray-400")}>{step.label}</p>
+                                 <span className="text-xs text-gray-400 mt-1 block">{step.active ? formatDateTime(step.date) : '—'}</span>
+                             </div>
+                         ))}
+                     </div>
+                 </div>
+
+                 {/* Payment Summary */}
+                 {payment && (
+                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                         <h3 className="font-bold text-gray-900 mb-4">Payment Summary</h3>
+                         <div className="space-y-3 text-sm">
+                             <div className="flex justify-between">
+                                 <span className="text-gray-500">Amount</span>
+                                 <span className="font-medium">₹{payment.total}</span>
+                             </div>
+                             <div className="flex justify-between">
+                                 <span className="text-gray-500">Platform Fee</span>
+                                 <span className="font-medium text-red-500">-{payment.platformFeePct}%</span>
+                             </div>
+                             <div className="pt-3 border-t border-gray-100 flex justify-between font-bold text-gray-900">
+                                 <span>Net Total</span>
+                                 <span>₹{payment.total}</span>
+                             </div>
+                             <div className={clsx("mt-3 text-center py-2 rounded-lg font-medium text-xs uppercase tracking-wide", payment.status === 'succeeded' ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700")}>
+                                {payment.status || 'Pending'}
+                             </div>
+                         </div>
+                     </div>
+                 )}
+            </div>
+        </div>
+      </div>
     </div>
   );
 }
+
+const CameraIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+);

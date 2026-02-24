@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../utils/api';
-import { Sparkles, Save, ArrowRight, Loader2, AlertCircle, CheckCircle2, Video, MapPin, Crosshair, Camera, X } from 'lucide-react';
+import { 
+  Sparkles, Save, ArrowRight, Loader2, AlertCircle, CheckCircle2, Video, 
+  MapPin, Crosshair, Camera, X, Building, Mic, Image as ImageIcon,
+  DollarSign, Clock, Users 
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -19,7 +24,7 @@ function LocationMarker({ position, setPosition }) {
     const map = useMapEvents({
       click(e) {
         setPosition(e.latlng);
-        // map.flyTo(e.latlng, map.getZoom());
+        map.flyTo(e.latlng, map.getZoom());
       },
     });
   
@@ -32,12 +37,12 @@ function LocationMarker({ position, setPosition }) {
     return position === null ? null : (
       <Marker position={position}></Marker>
     );
-  }
+}
 
 export default function JobCreate() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [description, setDescription] = useState('Bathroom renovation: fix leak, retile floor, check wiring.');
+  const [description, setDescription] = useState('');
   const [language, setLanguage] = useState('en');
   const [assistant, setAssistant] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
@@ -85,7 +90,6 @@ export default function JobCreate() {
         }, function(error) {
             console.error("Error Code = " + error.code + " - " + error.message);
             setLoadingLocation(false);
-            // Default to India center if permission denied
             setMapPosition({lat: 20.5937, lng: 78.9629});
         });
       } else {
@@ -93,12 +97,11 @@ export default function JobCreate() {
       }
   };
 
-  // On Mount, try to get location
   useEffect(() => {
       getCurrentLocation();
   }, []);
 
-  // Prefill from AI Assistant
+  // Prefill from AI Assistant or passed state
   useEffect(() => {
     if (location.state?.jobData) {
       const { jobData } = location.state;
@@ -115,7 +118,6 @@ export default function JobCreate() {
         workersNeeded: jobData.workers_needed || 1
       }));
       
-      // Handle description mapping
       if (jobData.worker_brief?.job_summary) {
         setDescription(jobData.worker_brief.job_summary);
       } else if (jobData.description) {
@@ -125,6 +127,7 @@ export default function JobCreate() {
   }, [location.state]);
 
   const runAssistant = async () => {
+    if (!description.trim()) return;
     setLoading(true);
     setError('');
     try {
@@ -166,26 +169,21 @@ export default function JobCreate() {
       });
       
       const structured = res.data.structured || {};
-      const rawText = res.data.raw;
+      // Auto-fill form
+      setForm(f => ({
+         ...f,
+         title: structured.title || f.title,
+         category: structured.category || f.category,
+         urgency: structured.urgency?.toLowerCase() || f.urgency,
+         skillsRequired: Array.isArray(structured.skills_required) ? structured.skills_required.join(', ') : f.skillsRequired,
+         budgetMin: String(structured.budget_min || f.budgetMin),
+         budgetMax: String(structured.budget_max || f.budgetMax),
+         hoursEstimate: String(structured.hours_estimate || f.hoursEstimate),
+         workersNeeded: String(structured.workers_needed || f.workersNeeded)
+      }));
 
-      // Auto-fill everything
-      if (structured.title) setForm(f => ({ ...f, title: structured.title }));
-      if (structured.category) setForm(f => ({ ...f, category: structured.category }));
-      if (structured.urgency) setForm(f => ({ ...f, urgency: structured.urgency.toLowerCase() }));
-      
-      // Auto-fill extended fields
-      if (structured.skills_required && Array.isArray(structured.skills_required)) {
-        setForm(f => ({ ...f, skillsRequired: structured.skills_required.join(', ') }));
-      }
-      if (structured.budget_min) setForm(f => ({ ...f, budgetMin: String(structured.budget_min) }));
-      if (structured.budget_max) setForm(f => ({ ...f, budgetMax: String(structured.budget_max) }));
-      if (structured.hours_estimate) setForm(f => ({ ...f, hoursEstimate: String(structured.hours_estimate) }));
-      if (structured.workers_needed) setForm(f => ({ ...f, workersNeeded: String(structured.workers_needed) }));
-
-      // Update description specifically
       if (structured.description) setDescription(structured.description);
 
-      // We can also set assistant result to show "Analysis Complete"
       setAssistant({ 
         structured, 
         raw: "Image analysis complete! Form has been auto-filled based on the defect detected." 
@@ -222,6 +220,7 @@ export default function JobCreate() {
           type: 'Point',
           coordinates: [Number(form.lng) || 0, Number(form.lat) || 0]
         },
+        address: "Location from Map", // Pending geocoding from map, simplified for now
         budget: {
           min: Number(form.budgetMin) || 0,
           max: Number(form.budgetMax) || 0,
@@ -243,356 +242,253 @@ export default function JobCreate() {
     }
   };
 
+  const inputClasses = "block w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all text-sm";
+  const labelClasses = "block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5 ml-1";
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Post a New Job</h1>
-        <p className="text-gray-500 mt-1">Describe your needs and let our AI help you structure the job post.</p>
+    <div className="min-h-screen bg-gray-50/30 pb-20">
+      
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-30 bg-opacity-90 backdrop-blur-md">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+             <div>
+                <h1 className="text-xl font-bold text-gray-900">Post a Job</h1>
+                <p className="text-xs text-gray-500">Let AI help you find the right talent</p>
+             </div>
+             <button 
+                onClick={onSubmit} 
+                className="btn-primary flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold shadow-lg shadow-primary-600/20"
+                disabled={submitting}
+             >
+                {submitting ? <Loader2 className="animate-spin w-4 h-4"/> : <Save className="w-4 h-4" />}
+                Publish Job
+             </button>
+         </div>
       </div>
 
-      {error && (
-        <div className="rounded-md bg-red-50 p-4 mb-6 border border-red-200">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <AlertCircle className="h-5 w-5 text-red-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">{error}</h3>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: AI Assistant */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-gradient-to-br from-primary-50 to-white rounded-xl shadow-sm border border-primary-100 p-6">
-            <div className="flex items-center gap-2 mb-4 text-primary-700">
-              <Sparkles className="w-5 h-5" />
-              <h2 className="font-semibold">AI Job Assistant</h2>
-            </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             
-            <div className="space-y-4">
-              {/* Photo Analysis */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-lg p-3">
-                <label className="block text-sm font-medium text-blue-900 mb-2 flex items-center">
-                  <Camera className="w-4 h-4 mr-2 text-blue-600" />
-                  Auto-fill from Photo
-                </label>
-                <div className="flex items-center space-x-3">
-                  <label className="flex-1 cursor-pointer group">
-                    <span className="sr-only">Choose File</span>
-                    <div className={clsx(
-                      "flex items-center justify-center border-2 border-dashed rounded-lg p-2 transition-colors",
-                      defectImage ? "border-green-300 bg-green-50" : "border-blue-200 hover:border-blue-400 bg-white"
-                    )}>
-                      {analyzingImage ? (
-                        <div className="flex items-center text-sm text-blue-600">
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Analyzing Defect...
+            {/* Left Column: AI Assistant (4 cols) */}
+            <div className="lg:col-span-4 space-y-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden sticky top-24">
+                    <div className="bg-gradient-to-r from-primary-600 to-indigo-600 px-6 py-4">
+                        <div className="flex items-center gap-2 text-white">
+                             <Sparkles className="w-5 h-5 text-yellow-300" />
+                             <h2 className="font-bold">Smart Assistant</h2>
                         </div>
-                      ) : defectImage ? (
-                        <div className="flex items-center text-sm text-green-700 font-medium">
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                          Processed: {defectImage.name}
-                        </div>
-                      ) : (
-                        <div className="flex items-center text-sm text-gray-500 group-hover:text-blue-600">
-                          <span className="bg-primary-100 text-primary-700 px-2 py-1 rounded text-xs mr-2 font-semibold">NEW</span>
-                          Snap a photo of the issue
-                        </div>
-                      )}
+                        <p className="text-primary-100 text-xs mt-1">Describe your issue or upload a photo. I'll fill the form for you.</p>
                     </div>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      onChange={handleDefectImageUpload}
-                      disabled={analyzingImage}
-                    />
-                  </label>
-                  {defectImage && !analyzingImage && (
-                    <button 
-                      type="button" 
-                      onClick={() => { setDefectImage(null); setAssistant(null); }}
-                      className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                      title="Clear"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
+
+                    <div className="p-6 space-y-6">
+                        {/* Text Input */}
+                        <div>
+                             <label className={labelClasses}>What needs to be done?</label>
+                             <div className="relative">
+                                 <textarea
+                                     rows={6}
+                                     className="block w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-none text-sm transition-all"
+                                     placeholder="e.g. My kitchen sink is leaking heavily..."
+                                     value={description}
+                                     onChange={(e) => setDescription(e.target.value)}
+                                 />
+                                 <button 
+                                    onClick={runAssistant}
+                                    disabled={loading || !description.trim()}
+                                    className="absolute bottom-3 right-3 p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors shadow-sm"
+                                    title="Generate Details"
+                                 >
+                                    {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : <ArrowRight className="w-4 h-4"/>}
+                                 </button>
+                             </div>
+                        </div>
+
+                        <div className="relative">
+                            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                <div className="w-full border-t border-gray-200" />
+                            </div>
+                            <div className="relative flex justify-center">
+                                <span className="bg-white px-2 text-xs text-gray-400 font-medium uppercase">Or use media</span>
+                            </div>
+                        </div>
+
+                        {/* Image Upload */}
+                        <div>
+                             <label className={clsx(
+                                 "flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-all",
+                                 defectImage ? "border-green-400 bg-green-50" : "border-gray-300 hover:border-primary-400 hover:bg-gray-50"
+                             )}>
+                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                     {analyzingImage ? (
+                                         <>
+                                            <Loader2 className="w-8 h-8 text-primary-600 animate-spin mb-2" />
+                                            <p className="text-sm text-gray-500">Analyzing...</p>
+                                         </>
+                                     ) : defectImage ? (
+                                         <>
+                                            <CheckCircle2 className="w-8 h-8 text-green-500 mb-2" />
+                                            <p className="text-sm text-green-700 font-medium text-center px-4 truncate w-full">{defectImage.name}</p>
+                                            <p className="text-xs text-green-600">Analysis Complete</p>
+                                         </>
+                                     ) : (
+                                         <>
+                                            <Camera className="w-8 h-8 text-gray-400 mb-2" />
+                                            <p className="text-sm text-gray-500"><span className="font-semibold text-primary-600">Click to upload</span> defect photo</p>
+                                            <p className="text-xs text-gray-400 mt-1">AI will detect the issue automatically</p>
+                                         </>
+                                     )}
+                                 </div>
+                                 <input type="file" className="hidden" accept="image/*" onChange={handleDefectImageUpload} />
+                             </label>
+                        </div>
+
+                        {/* Video Upload - Optional */}
+                        <div>
+                             <label className={clsx(
+                                 "flex items-center justify-center w-full p-4 border border-gray-200 rounded-xl cursor-pointer bg-white hover:bg-gray-50 transition-colors",
+                                 videoFile && "border-green-400 bg-green-50"
+                             )}>
+                                 {videoFile ? (
+                                     <div className="flex items-center gap-2 text-green-700 w-full overflow-hidden">
+                                         <Video className="w-5 h-5 flex-shrink-0" />
+                                         <span className="text-sm truncate">{videoFile.name}</span>
+                                         <button onClick={(e) => { e.preventDefault(); setVideoFile(null); }} className="ml-auto"><X className="w-4 h-4 text-green-600"/></button>
+                                     </div>
+                                 ) : (
+                                     <div className="flex items-center gap-2 text-gray-500">
+                                         <Video className="w-5 h-5 text-gray-400" />
+                                         <span className="text-sm font-medium">Add Video Explanation (Optional)</span>
+                                         <input type="file" className="hidden" accept="video/*" onChange={e => setVideoFile(e.target.files[0])} />
+                                     </div>
+                                 )}
+                             </label>
+                        </div>
+                    </div>
                 </div>
-                <p className="mt-1 text-xs text-blue-600/80">
-                  AI will identify the problem and fill the form for you.
-                </p>
-              </div>
-
-              <div className="border-t border-gray-100 my-2"></div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Describe the job in plain language
-                </label>
-                <textarea
-                  rows={6}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
-                  placeholder="e.g. I need a plumber to fix a leaking faucet in the kitchen..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
-                <select
-                  value={language}
-                  onChange={e => setLanguage(e.target.value)}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                >
-                  <option value="en">English</option>
-                  <option value="es">Spanish</option>
-                  <option value="fr">French</option>
-                  <option value="hi">Hindi</option>
-                </select>
-              </div>
-
-              <button
-                type="button"
-                onClick={runAssistant}
-                disabled={loading}
-                className="w-full flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 shadow-sm transition-all hover:shadow-md disabled:opacity-70"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="-ml-1 mr-2 h-4 w-4" />
-                    Analyze & Auto-fill
-                  </>
-                )}
-              </button>
             </div>
 
-            {assistant && (
-              <div className="mt-6 pt-6 border-t border-primary-100">
-                <div className="flex items-start gap-2 text-sm text-primary-800 bg-primary-50 p-3 rounded-lg">
-                  <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-primary-600" />
-                  <p>{assistant.message}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right Column: Job Form */}
-        <div className="lg:col-span-2">
-          <form onSubmit={onSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location <span className="text-red-500">*</span>
-                </label>
-                <div className="h-64 sm:h-80 w-full rounded-lg border border-gray-300 overflow-hidden relative z-0 mb-2">
-                    {loadingLocation && (
-                        <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
-                            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
-                        </div>
+            {/* Right Column: Complete Form (8 cols) */}
+            <div className="lg:col-span-8 space-y-8">
+                 {/* Error Banner */}
+                 <AnimatePresence>
+                    {error && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ height: 0 }} className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 text-red-700">
+                            <AlertCircle className="w-5 h-5 shrink-0" />
+                            <span className="text-sm font-medium">{error}</span>
+                        </motion.div>
                     )}
-                    {/* Render Map only when mapPosition is available (even default) */}
-                    {mapPosition ? (
-                       <MapContainer 
-                         center={mapPosition} 
-                         zoom={10} 
-                         scrollWheelZoom={true} 
-                         style={{ height: '100%', width: '100%' }}
-                       >
-                         <TileLayer
-                           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                         />
-                         <LocationMarker position={mapPosition} setPosition={setMapPosition} />
-                       </MapContainer>
-                    ) : (
-                        <div className="h-full w-full bg-gray-100 flex items-center justify-center text-gray-500">
-                             Map Loading...
+                 </AnimatePresence>
+
+                 {/* Basic Details Card */}
+                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                         <Building className="w-5 h-5 text-primary-600"/> Job Details
+                     </h3>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="md:col-span-2">
+                             <label className={labelClasses}>Job Title</label>
+                             <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className={inputClasses} placeholder="e.g. Fix Leaking Tap" />
+                         </div>
+                         
+                         <div>
+                             <label className={labelClasses}>Category</label>
+                             <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className={inputClasses}>
+                                 <option value="">Select Category</option>
+                                 <option value="Plumbing">Plumbing</option>
+                                 <option value="Electrical">Electrical</option>
+                                 <option value="Carpentry">Carpentry</option>
+                                 <option value="Cleaning">Cleaning</option>
+                                 <option value="Painting">Painting</option>
+                                 <option value="General">General/Other</option>
+                             </select>
+                         </div>
+
+                         <div>
+                             <label className={labelClasses}>Urgency</label>
+                             <select value={form.urgency} onChange={e => setForm({...form, urgency: e.target.value})} className={inputClasses}>
+                                 <option value="low">Low - Whenever possible</option>
+                                 <option value="medium">Medium - Within a few days</option>
+                                 <option value="high">High - Need it today</option>
+                                 <option value="emergency">Emergency - NOW</option>
+                             </select>
+                         </div>
+
+                         <div className="md:col-span-2">
+                             <label className={labelClasses}>Required Skills</label>
+                             <input type="text" value={form.skillsRequired} onChange={e => setForm({...form, skillsRequired: e.target.value})} className={inputClasses} placeholder="Pipe fitting, Drilling (comma separated)" />
+                         </div>
+
+                         <div className="md:col-span-2">
+                             <label className={labelClasses}>Tasks List</label>
+                             <textarea rows={4} value={form.tasks} onChange={e => setForm({...form, tasks: e.target.value})} className={inputClasses} placeholder="List specific tasks..." />
+                         </div>
+                     </div>
+                 </div>
+
+                 {/* Budget & Schedule */}
+                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                         <DollarSign className="w-5 h-5 text-green-600"/> Budget & Schedule
+                     </h3>
+
+                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                             <label className={labelClasses}>Min Budget (₹)</label>
+                             <input type="number" value={form.budgetMin} onChange={e => setForm({...form, budgetMin: e.target.value})} className={inputClasses} placeholder="500" />
                         </div>
-                    )}
-                    
-                    <button 
-                      type="button" 
-                      onClick={() => getCurrentLocation()}
-                      className="absolute bottom-4 right-4 z-[400] bg-white p-2 rounded-full shadow-md hover:bg-gray-50 border border-gray-200"
-                      title="Use My Location"
-                    >
-                        <Crosshair className="w-5 h-5 text-gray-700" />
-                    </button>
-                </div>
-                <p className="text-xs text-gray-500 flex items-center gap-1">
-                    <MapPin className="w-3 h-3" /> Tap on map to pinpoint exact job location
-                </p>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
-                <input
-                  type="text"
-                  required
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={form.title}
-                  onChange={e => setForm({ ...form, title: e.target.value })}
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Problem Video (Optional)</label>
-                <div className={`
-                  mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed rounded-lg transition-colors
-                  ${videoFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary-400 hover:bg-gray-50'}
-                `}>
-                  <div className="space-y-1 text-center">
-                    {videoFile ? (
-                      <div className="flex items-center justify-center space-x-2">
-                        <Video className="h-8 w-8 text-green-600" />
-                        <div className="text-left">
-                          <p className="text-sm font-medium text-gray-900 truncate max-w-xs">{videoFile.name}</p>
-                          <button 
-                            type="button" 
-                            onClick={() => setVideoFile(null)}
-                            className="text-xs text-red-600 hover:text-red-800 font-medium"
-                          >
-                            Remove video
-                          </button>
+                        <div>
+                             <label className={labelClasses}>Max Budget (₹)</label>
+                             <input type="number" value={form.budgetMax} onChange={e => setForm({...form, budgetMax: e.target.value})} className={inputClasses} placeholder="1500" />
                         </div>
-                      </div>
-                    ) : (
-                      <>
-                        <Video className="mx-auto h-12 w-12 text-gray-400" />
-                        <div className="flex text-sm text-gray-600 justify-center">
-                          <label htmlFor="video-upload" className="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500 focus-within:outline-none">
-                            <span>Upload a video</span>
-                            <input id="video-upload" name="video-upload" type="file" accept="video/*" className="sr-only" onChange={e => setVideoFile(e.target.files[0])} />
-                          </label>
-                          <p className="pl-1">or drag and drop</p>
+                        <div>
+                             <label className={labelClasses}>Est. Hours</label>
+                             <div className="relative">
+                                 <Clock className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" />
+                                 <input type="number" value={form.hoursEstimate} onChange={e => setForm({...form, hoursEstimate: e.target.value})} className={clsx(inputClasses, "pl-10")} placeholder="2" />
+                             </div>
                         </div>
-                        <p className="text-xs text-gray-500">MP4, MOV up to 50MB</p>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
+                     </div>
+                 </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <input
-                  type="text"
-                  required
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={form.category}
-                  onChange={e => setForm({ ...form, category: e.target.value })}
-                />
-              </div>
+                 {/* Location Map */}
+                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 overflow-hidden">
+                     <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+                         <MapPin className="w-5 h-5 text-red-500"/> Location
+                     </h3>
+                     
+                     <div className="h-80 rounded-xl overflow-hidden border border-gray-200 relative z-0">
+                         {loadingLocation ? (
+                             <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                                 <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+                             </div>
+                         ) : (
+                             <MapContainer center={mapPosition} zoom={13} style={{ height: '100%', width: '100%' }}>
+                                 <TileLayer
+                                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                     attribution='&copy; OpenStreetMap'
+                                 />
+                                 <LocationMarker position={mapPosition} setPosition={setMapPosition} />
+                             </MapContainer>
+                         )}
+                         <div className="absolute top-4 right-4 bg-white/90 backdrop-blur p-2 rounded-lg shadow-md z-[1000] text-xs text-gray-500 font-medium border border-gray-200">
+                             Click map to update pin
+                         </div>
+                     </div>
+                     <div className="mt-4 flex gap-4">
+                         <div className="flex-1">
+                            <label className={labelClasses}>Latitude</label>
+                            <input type="text" readOnly value={form.lat} className={clsx(inputClasses, "bg-gray-100 text-gray-500")} />
+                         </div>
+                         <div className="flex-1">
+                            <label className={labelClasses}>Longitude</label>
+                            <input type="text" readOnly value={form.lng} className={clsx(inputClasses, "bg-gray-100 text-gray-500")} />
+                         </div>
+                     </div>
+                 </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Urgency</label>
-                <select
-                  value={form.urgency}
-                  onChange={e => setForm({ ...form, urgency: e.target.value })}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Required Skills (comma separated)</label>
-                <input
-                  type="text"
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={form.skillsRequired}
-                  onChange={e => setForm({ ...form, skillsRequired: e.target.value })}
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tasks List (one per line)</label>
-                <textarea
-                  rows={4}
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={form.tasks}
-                  onChange={e => setForm({ ...form, tasks: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Budget Min (₹)</label>
-                <input
-                  type="number"
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={form.budgetMin}
-                  onChange={e => setForm({ ...form, budgetMin: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Budget Max (₹)</label>
-                <input
-                  type="number"
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={form.budgetMax}
-                  onChange={e => setForm({ ...form, budgetMax: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Est. Hours</label>
-                <input
-                  type="number"
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={form.hoursEstimate}
-                  onChange={e => setForm({ ...form, hoursEstimate: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Workers Needed</label>
-                <input
-                  type="number"
-                  min="1"
-                  className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  value={form.workersNeeded}
-                  onChange={e => setForm({ ...form, workersNeeded: e.target.value })}
-                />
-              </div>
             </div>
-
-            <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
-              <button
-                type="button"
-                onClick={() => navigate('/jobs')}
-                className="mr-3 px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="inline-flex items-center px-6 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-70"
-              >
-                {submitting ? (
-                  <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                ) : (
-                  <Save className="-ml-1 mr-2 h-4 w-4" />
-                )}
-                Post Job
-              </button>
-            </div>
-          </form>
-        </div>
+         </div>
       </div>
     </div>
   );

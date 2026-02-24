@@ -1,8 +1,24 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { User, Mail, Phone, Lock, Briefcase, IndianRupee, Clock, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { User, Mail, Phone, Lock, Briefcase, IndianRupee, Clock, FileText, Loader2, AlertCircle, Camera, Check, ArrowRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
+
+const InputField = ({ icon: Icon, label, ...props }) => (
+  <div className="space-y-1.5">
+    <label className="block text-sm font-semibold text-gray-700">{label}</label>
+    <div className="relative group">
+      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 group-focus-within:text-primary-500 transition-colors">
+        <Icon className="h-5 w-5" />
+      </div>
+      <input
+        {...props}
+        className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 sm:text-sm transition-all duration-200"
+      />
+    </div>
+  </div>
+);
 
 export default function Register() {
   const { register } = useAuth();
@@ -53,6 +69,7 @@ export default function Register() {
       await register(formData);
       navigate('/verify-email');
     } catch (err) {
+      console.error(err);
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
@@ -60,272 +77,251 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50">
-      <div className="max-w-2xl w-full space-y-8 glass-card p-8 rounded-2xl">
-        <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900">Create an account</h2>
+    <div className="min-h-screen bg-gray-50/50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-2xl w-full bg-white rounded-3xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden"
+      >
+        <div className="px-8 pt-8 pb-6 text-center border-b border-gray-100 bg-gray-50/30">
+          <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Create your account</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Join WorkLink to find work or hire professionals
+            Already have an account?{' '}
+            <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500 transition-colors">
+              Sign in
+            </Link>
           </p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={onSubmit}>
-          {error && (
-            <div className="rounded-md bg-red-50 p-4 border border-red-200">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <AlertCircle className="h-5 w-5 text-red-400" aria-hidden="true" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">{error}</h3>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Account Type Toggle */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-gray-100 p-1 rounded-lg inline-flex">
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, isWorker: false })}
-                className={clsx(
-                  "px-6 py-2 rounded-md text-sm font-medium transition-all",
-                  !form.isWorker 
-                    ? "bg-white text-primary-600 shadow-sm" 
-                    : "text-gray-500 hover:text-gray-700"
-                )}
-              >
-                I want to Hire
-              </button>
-              <button
-                type="button"
-                onClick={() => setForm({ ...form, isWorker: true })}
-                className={clsx(
-                  "px-6 py-2 rounded-md text-sm font-medium transition-all",
-                  form.isWorker 
-                    ? "bg-white text-primary-600 shadow-sm" 
-                    : "text-gray-500 hover:text-gray-700"
-                )}
-              >
-                I want to Work
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Profile Photo</label>
-              <div className="flex items-center space-x-4">
-                <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
-                  {avatar ? (
-                    <img src={URL.createObjectURL(avatar)} alt="Preview" className="h-full w-full object-cover" />
-                  ) : (
-                    <User className="h-6 w-6 text-gray-400" />
-                  )}
-                </div>
-                <label className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
-                  <span>Upload</span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*"
-                    onChange={e => setAvatar(e.target.files[0])}
-                  />
-                </label>
-                {avatar && <span className="text-xs text-gray-500">{avatar.name}</span>}
-              </div>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  required
-                  className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="John Doe"
-                  value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="email"
-                  required
-                  className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="john@example.com"
-                  value={form.email}
-                  onChange={e => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Phone className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="tel"
-                  required
-                  className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="+1 (555) 000-0000"
-                  value={form.phone}
-                  onChange={e => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="password"
-                  required
-                  className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={e => setForm({ ...form, password: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {form.isWorker && (
-              <>
-                <div className="sm:col-span-2 pt-4 border-t border-gray-200">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Worker Profile</h3>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Professional Title</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Briefcase className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      type="text"
-                      required={form.isWorker}
-                      className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                      placeholder="e.g. Electrician, Plumber"
-                      value={form.title}
-                      onChange={e => setForm({ ...form, title: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Skills (comma separated)</label>
-                  <input
-                    type="text"
-                    required={form.isWorker}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                    placeholder="Wiring, Installation, Repair"
-                    value={form.skills}
-                    onChange={e => setForm({ ...form, skills: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Experience (Years)</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Clock className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      type="number"
-                      required={form.isWorker}
-                      min="0"
-                      className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                      placeholder="5"
-                      value={form.experienceYears}
-                      onChange={e => setForm({ ...form, experienceYears: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hourly Rate (₹)</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <IndianRupee className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <input
-                      type="number"
-                      required={form.isWorker}
-                      min="0"
-                      className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                      placeholder="25"
-                      value={form.hourlyRate}
-                      onChange={e => setForm({ ...form, hourlyRate: e.target.value })}
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {form.experienceYears ? (
-                      <>Suggested: ₹{Math.max(15, Math.min(100, 15 + (Number(form.experienceYears) * 5)))}-₹{Math.max(25, Math.min(150, 25 + (Number(form.experienceYears) * 8)))}/hr based on {form.experienceYears} years experience.</>
-                    ) : (
-                      <>Recommended: ₹20-₹50/hr based on your skills and experience.</>
-                    )}
-                  </p>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                  <div className="relative">
-                    <div className="absolute top-3 left-3 pointer-events-none">
-                      <FileText className="h-5 w-5 text-gray-400" />
-                    </div>
-                    <textarea
-                      rows={3}
-                      className="appearance-none block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                      placeholder="Tell us about your experience..."
-                      value={form.bio}
-                      onChange={e => setForm({ ...form, bio: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </>
+        <div className="p-8">
+            <form className="space-y-8" onSubmit={onSubmit}>
+            {error && (
+                <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="rounded-xl bg-red-50 p-4 border border-red-100 flex items-start gap-3"
+                >
+                    <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+                    <div className="text-sm text-red-700">{error}</div>
+                </motion.div>
             )}
-          </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-70 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary-600/20"
-            >
-              {loading ? (
-                <Loader2 className="animate-spin h-5 w-5" />
-              ) : (
-                'Create Account'
-              )}
-            </button>
-          </div>
+            {/* Account Type Toggle */}
+            <div className="flex flex-col items-center gap-4">
+                <span className="text-sm font-medium text-gray-500">I want to...</span>
+                <div className="bg-gray-100 p-1.5 rounded-xl inline-flex relative">
+                    {/* Animated background pill */}
+                    <motion.div 
+                        className="absolute inset-y-1.5 bg-white shadow-sm rounded-lg"
+                        layoutId="toggle-pill"
+                        initial={false}
+                        animate={{ 
+                            left: form.isWorker ? '50%' : '6px',
+                            right: form.isWorker ? '6px' : '50%'
+                        }}
+                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    />
+                    
+                    <button
+                        type="button"
+                        onClick={() => setForm({ ...form, isWorker: false })}
+                        className={clsx(
+                            "relative z-10 px-8 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-200",
+                            !form.isWorker ? "text-primary-600" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        Hire Talent
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setForm({ ...form, isWorker: true })}
+                        className={clsx(
+                            "relative z-10 px-8 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-200",
+                            form.isWorker ? "text-primary-600" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        Find Work
+                    </button>
+                </div>
+            </div>
 
-          <div className="text-center mt-4">
-            <p className="text-sm text-gray-600">
-              Already have an account?{' '}
-              <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
-                Sign in
-              </Link>
+            <div className="space-y-6">
+                {/* Profile Photo Upload */}
+                <div className="flex justify-center">
+                    <div className="relative group">
+                        <div className="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-dashed border-gray-300 group-hover:border-primary-400 transition-colors">
+                            {avatar ? (
+                                <img src={URL.createObjectURL(avatar)} alt="Preview" className="h-full w-full object-cover" />
+                            ) : (
+                                <User className="h-10 w-10 text-gray-400" />
+                            )}
+                        </div>
+                        <label className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <Camera className="h-4 w-4 text-gray-600" />
+                            <input
+                                type="file"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={e => setAvatar(e.target.files[0])}
+                            />
+                        </label>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2">
+                        <InputField 
+                            icon={User} 
+                            label="Full Name" 
+                            type="text" 
+                            placeholder="John Doe" 
+                            required 
+                            value={form.name}
+                            onChange={e => setForm({ ...form, name: e.target.value })}
+                        />
+                    </div>
+                    
+                    <InputField 
+                        icon={Mail} 
+                        label="Email Address" 
+                        type="email" 
+                        placeholder="john@example.com" 
+                        required 
+                        value={form.email}
+                        onChange={e => setForm({ ...form, email: e.target.value })}
+                    />
+
+                    <InputField 
+                        icon={Phone} 
+                        label="Phone Number" 
+                        type="tel" 
+                        placeholder="+91 98765 43210" 
+                        required 
+                        value={form.phone}
+                        onChange={e => setForm({ ...form, phone: e.target.value })}
+                    />
+
+                    <div className="md:col-span-2">
+                        <InputField 
+                            icon={Lock} 
+                            label="Password" 
+                            type="password" 
+                            placeholder="Min. 8 characters" 
+                            required
+                            value={form.password}
+                            onChange={e => setForm({ ...form, password: e.target.value })}
+                        />
+                    </div>
+                </div>
+
+                <AnimatePresence>
+                    {form.isWorker && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="bg-gray-50 rounded-2xl p-6 border border-gray-200 space-y-6 overflow-hidden"
+                        >
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 border-b border-gray-200 pb-4">
+                                <Briefcase className="w-5 h-5 text-primary-600" />
+                                Professional Profile
+                            </h3>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="md:col-span-2">
+                                    <InputField 
+                                        icon={Briefcase} 
+                                        label="Professional Title" 
+                                        type="text" 
+                                        placeholder="e.g. Senior Electrician" 
+                                        required={form.isWorker}
+                                        value={form.title}
+                                        onChange={e => setForm({ ...form, title: e.target.value })}
+                                    />
+                                </div>
+                                
+                                <InputField 
+                                    icon={Clock} 
+                                    label="Experience (Years)" 
+                                    type="number" 
+                                    min="0"
+                                    placeholder="5" 
+                                    required={form.isWorker}
+                                    value={form.experienceYears}
+                                    onChange={e => setForm({ ...form, experienceYears: e.target.value })}
+                                />
+
+                                <InputField 
+                                    icon={IndianRupee} 
+                                    label="Hourly Rate (₹)" 
+                                    type="number" 
+                                    min="0"
+                                    placeholder="500" 
+                                    required={form.isWorker}
+                                    value={form.hourlyRate}
+                                    onChange={e => setForm({ ...form, hourlyRate: e.target.value })}
+                                />
+                                
+                                <div className="md:col-span-2 space-y-1.5">
+                                    <label className="block text-sm font-semibold text-gray-700">Skills</label>
+                                    <input
+                                        type="text"
+                                        className="block w-full px-4 py-3 border border-gray-200 rounded-xl bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 sm:text-sm transition-colors"
+                                        placeholder="Wiring, Pipe Fitting, Repair (comma separated)"
+                                        required={form.isWorker}
+                                        value={form.skills}
+                                        onChange={e => setForm({ ...form, skills: e.target.value })}
+                                    />
+                                    <p className="text-xs text-gray-500">Add 3-5 main skills separated by commas</p>
+                                </div>
+
+                                <div className="md:col-span-2 space-y-1.5">
+                                     <label className="block text-sm font-semibold text-gray-700">Bio</label>
+                                     <div className="relative">
+                                         <div className="absolute top-3 left-3 text-gray-400">
+                                             <FileText className="w-5 h-5" />
+                                         </div>
+                                         <textarea
+                                            rows={3}
+                                            className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 sm:text-sm transition-colors"
+                                            placeholder="Brief description of your expertise and work ethic..."
+                                            value={form.bio}
+                                            onChange={e => setForm({ ...form, bio: e.target.value })}
+                                         />
+                                     </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
+
+            <div className="pt-4">
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className={clsx(
+                        "w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-xl shadow-xl shadow-primary-600/20 text-base font-bold text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all active:scale-[0.98]",
+                        loading && "opacity-70 cursor-wait"
+                    )}
+                >
+                    {loading ? (
+                        <>
+                            <Loader2 className="w-5 h-5 animate-spin mr-2" /> Creating Account...
+                        </>
+                    ) : (
+                        <>
+                            Create Account <ArrowRight className="ml-2 w-5 h-5" />
+                        </>
+                    )}
+                </button>
+            </div>
+            </form>
+            <p className="mt-8 text-center text-xs text-gray-400">
+                By signing up, you agree to our Terms of Service and Privacy Policy.
             </p>
-          </div>
-        </form>
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

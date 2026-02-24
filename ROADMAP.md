@@ -48,13 +48,13 @@
 
 ## Phase 6: Gamification & Ranking (High Priority)
 
-- [ ] **Worker Badges & Achievements**
-  - [ ] Backend: Define badge criteria (e.g., "5-Star Streak", "Early Bird", "Verified Pro").
-  - [ ] Backend: Logic to award badges automatically on job completion.
-  - [ ] Frontend: Display badges on Worker Profile and Job Proposals.
-- [ ] **Leaderboards**
-  - [ ] Backend: Calculate weekly/monthly top workers based on ratings & jobs completed.
-  - [ ] Frontend: "Top Workers" section on Home/Worker list.
+- [x] **Worker Badges & Achievements**
+  - [x] Backend: Define badge criteria (e.g., "5-Star Streak", "Early Bird", "Verified Pro").
+  - [x] Backend: Logic to award badges automatically on job completion.
+  - [x] Frontend: Display badges on Worker Profile and Job Proposals.
+- [x] **Leaderboards**
+  - [x] Backend: Calculate weekly/monthly top workers based on ratings & jobs completed.
+  - [x] Frontend: "Top Workers" section on Home/Worker list.
 
 ## Phase 7: Advanced Location & Alerts
 

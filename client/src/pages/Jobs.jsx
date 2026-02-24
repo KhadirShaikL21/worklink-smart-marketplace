@@ -13,7 +13,7 @@ export default function Jobs() {
   useEffect(() => {
     setLoading(true);
     api
-      .get('/api/jobs')
+      .get('/api/jobs?role=customer') // Explicitly fetch created jobs
       .then(res => setJobs(res.data.jobs))
       .catch(err => setError(err.response?.data?.message || 'Failed to load jobs'))
       .finally(() => setLoading(false));
@@ -31,12 +31,12 @@ export default function Jobs() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Jobs</h1>
-          <p className="text-gray-500 mt-1">Manage your job postings and view matches</p>
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">My Posted Jobs</h1>
+          <p className="text-lg text-gray-600 mt-2">Manage your job postings and track applicant matches effectively.</p>
         </div>
         <Link
           to="/jobs/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all hover:shadow-md"
+          className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl shadow-lg text-white bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 transition-all transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
         >
           <Plus className="h-5 w-5 mr-2" />
           Post New Job
@@ -65,19 +65,19 @@ export default function Jobs() {
       ) : (
         <div className="space-y-4">
           {jobs.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-xl border border-gray-200 border-dashed">
-              <div className="mx-auto h-12 w-12 text-gray-400">
-                <Briefcase className="h-12 w-12" />
+            <div className="text-center py-20 bg-white rounded-2xl border border-gray-200 border-dashed shadow-sm">
+              <div className="mx-auto h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                <Briefcase className="h-10 w-10 text-gray-400" />
               </div>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No jobs posted</h3>
-              <p className="mt-1 text-sm text-gray-500">Get started by creating a new job posting.</p>
-              <div className="mt-6">
+              <h3 className="text-xl font-bold text-gray-900">No jobs posted yet</h3>
+              <p className="mt-2 text-gray-500 max-w-sm mx-auto">Get started by creating a new job posting to find the perfect worker for your needs.</p>
+              <div className="mt-8">
                 <Link
                   to="/jobs/new"
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+                  className="inline-flex items-center px-6 py-3 border border-transparent shadow-lg text-base font-medium rounded-xl text-white bg-primary-600 hover:bg-primary-700 transition-all hover:-translate-y-1"
                 >
                   <Plus className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
-                  Post Job
+                  Create First Job
                 </Link>
               </div>
             </div>

@@ -44,22 +44,22 @@ export default function Workers() {
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-10 gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{t('workers.title')}</h1>
-          <p className="text-gray-500 mt-1">{t('workers.subtitle')}</p>
+          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">{t('workers.title')}</h1>
+          <p className="text-lg text-gray-600 mt-2 max-w-2xl">{t('workers.subtitle')}</p>
         </div>
         
         {/* Search and Filter Bar */}
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+        <div className="w-full md:w-auto bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row gap-2">
           <div className="relative flex-grow md:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />
             </div>
             <input
               type="text"
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+              className="block w-full pl-10 pr-3 py-2.5 border-none rounded-lg leading-5 bg-transparent placeholder-gray-400 focus:outline-none focus:ring-0 sm:text-sm"
               placeholder={t('workers.searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -67,31 +67,20 @@ export default function Workers() {
             />
           </div>
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 border-t sm:border-t-0 sm:border-l border-gray-100 pt-2 sm:pt-0 sm:pl-2">
             <select
               value={skill}
               onChange={e => { setSkill(e.target.value); setSubSkill(''); }}
-              className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-lg"
+              className="block w-full pl-3 pr-8 py-2 text-sm border-none bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-gray-600 font-medium"
             >
               <option value="">{t('workers.allCategories')}</option>
               {categories.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
             </select>
             
-            <select
-              value={subSkill}
-              onChange={e => setSubSkill(e.target.value)}
-              disabled={!skill}
-              className="block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm rounded-lg disabled:bg-gray-100 disabled:text-gray-400"
-            >
-              <option value="">{t('workers.allSubSkills')}</option>
-              {(subSkillsByCategory[skill] || []).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            
             <button
               onClick={load}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-bold rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
             >
-              <Filter className="h-4 w-4 mr-2" />
               {t('workers.filter')}
             </button>
           </div>

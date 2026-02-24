@@ -33,12 +33,12 @@ const StatCard = ({ number, label }) => (
 );
 
 const CategoryCard = ({ icon: Icon, title, count }) => (
-  <Link to={`/workers?category=${title}`} className="group flex flex-col items-center p-6 bg-white rounded-xl border border-gray-100 hover:border-primary-500 hover:shadow-md transition-all duration-300">
-    <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mb-4 group-hover:bg-primary-50 transition-colors">
-      <Icon className="w-8 h-8 text-gray-600 group-hover:text-primary-600 transition-colors" />
+  <Link to={`/workers?category=${title}`} className="group flex flex-col items-center p-6 bg-white rounded-xl border border-gray-100 hover:border-primary-500 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+    <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4 group-hover:bg-primary-50 transition-colors shadow-sm">
+      <Icon className="w-8 h-8 text-primary-600 group-hover:text-primary-700 transition-colors" />
     </div>
-    <h3 className="font-semibold text-gray-900 group-hover:text-primary-700">{title}</h3>
-    <span className="text-sm text-gray-500 mt-1">{count} Professionals</span>
+    <h3 className="font-bold text-gray-900 group-hover:text-primary-700 text-lg">{title}</h3>
+    <span className="text-sm text-gray-500 mt-2 font-medium bg-gray-50 px-3 py-1 rounded-full">{count} Professionals</span>
   </Link>
 );
 
@@ -46,6 +46,11 @@ export default function Home() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const [topWorkers, setTopWorkers] = useState([]);
+  
+  const heroImage1 = "https://images.unsplash.com/photo-1581244277943-fe4a9c777189?q=80&w=1000&auto=format&fit=crop"; // Factory Worker / Mechanic
+  const heroImage2 = "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=1000&auto=format&fit=crop"; // Electrician
+  const featureImage = "https://images.unsplash.com/photo-1607472586893-edb57bdc0e39?q=80&w=1000&auto=format&fit=crop"; // Plumber under sink
+
 
   useEffect(() => {
     const fetchTopWorkers = async () => {
@@ -53,7 +58,6 @@ export default function Home() {
         const res = await api.get('/api/workers/leaderboard?limit=3');
         setTopWorkers(res.data);
       } catch (err) {
-        // Fallback or silence error
         console.log('Leaderboard not available yet');
       }
     };
@@ -146,41 +150,66 @@ export default function Home() {
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
-              className="relative hidden lg:block"
+              className="relative hidden lg:block h-[600px]"
             >
-               <div className="relative z-10 bg-white p-2 rounded-2xl shadow-2xl rotate-3 hover:rotate-0 transition-transform duration-500">
+               {/* Secondary Image (Behind) */}
+               <div className="absolute top-20 left-0 w-2/3 h-[400px] z-0 transform -rotate-6 rounded-3xl overflow-hidden border-4 border-white shadow-xl opacity-90">
+                  <img 
+                    src={heroImage2} 
+                    alt="Electrician working on panel" 
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-primary-900/10"></div>
+               </div>
+
+               {/* Main Image */}
+               <div className="absolute top-0 right-0 w-3/4 z-10 p-2 rounded-3xl rotate-3 hover:rotate-0 transition-transform duration-500 origin-bottom-left">
+                 <div className="absolute inset-0 bg-gradient-to-tr from-primary-600 to-indigo-600 rounded-3xl transform rotate-6 opacity-20 blur-lg"></div>
                  <img 
-                   src="/images/hero-worker.jpg" 
-                   alt="Professional working" 
-                   className="rounded-xl w-full h-[500px] object-cover"
+                   src={heroImage1} 
+                   alt="Plumber Fixing Pipe" 
+                   className="relative rounded-2xl w-full h-[450px] object-cover shadow-2xl border-4 border-white"
                  />
                  
                  {/* Floating Cards */}
-                 <div className="absolute -left-12 top-12 bg-white p-4 rounded-xl shadow-lg animate-bounce duration-[3000ms]">
+                 <motion.div 
+                    animate={{ y: [0, -10, 0] }}
+                    transition={{ repeat: Infinity, duration: 4 }}
+                    className="absolute -left-12 top-24 bg-white p-4 rounded-xl shadow-xl border border-gray-100 max-w-[180px]"
+                 >
                    <div className="flex items-center gap-3">
-                     <div className="bg-green-100 p-2 rounded-lg">
-                       <CheckCircle className="w-6 h-6 text-green-600" />
+                     <div className="bg-green-100 p-2.5 rounded-lg shrink-0">
+                       <Shield className="w-6 h-6 text-green-600" />
                      </div>
                      <div>
-                       <p className="font-bold text-gray-900">Verified Pro</p>
-                       <p className="text-xs text-gray-500">ID Checked</p>
+                       <p className="font-bold text-gray-900 text-sm">100% Verified</p>
+                       <p className="text-xs text-gray-500">Safe & Secure</p>
                      </div>
                    </div>
-                 </div>
+                 </motion.div>
 
-                 <div className="absolute -bottom-8 -right-8 bg-white p-4 rounded-xl shadow-lg">
-                    <div className="flex items-center gap-4">
+                 <motion.div 
+                    animate={{ y: [0, 10, 0] }}
+                    transition={{ repeat: Infinity, duration: 5, delay: 1 }}
+                    className="absolute -bottom-8 -right-4 bg-white p-5 rounded-xl shadow-xl border border-gray-100"
+                 >
+                    <div className="flex items-center gap-6">
                       <div className="text-center">
-                        <p className="font-bold text-2xl text-primary-600">4.9</p>
-                        <p className="text-xs text-gray-500">Rating</p>
+                        <div className="flex items-center justify-center gap-1 text-yellow-500 mb-1">
+                           <span className="font-bold text-2xl text-gray-900">4.9</span>
+                           <Star className="w-5 h-5 fill-current" />
+                        </div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Rating</p>
                       </div>
-                      <div className="h-8 w-px bg-gray-200"></div>
+                      <div className="h-10 w-px bg-gray-100"></div>
                       <div className="text-center">
-                        <p className="font-bold text-2xl text-primary-600">98%</p>
-                        <p className="text-xs text-gray-500">Success</p>
+                        <div className="flex items-center justify-center gap-1 text-primary-600 mb-1">
+                           <span className="font-bold text-2xl">98%</span>
+                        </div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Success</p>
                       </div>
                     </div>
-                 </div>
+                 </motion.div>
                </div>
             </motion.div>
           </div>
@@ -221,30 +250,76 @@ export default function Home() {
       {/* Key Features */}
       <section className="py-24 bg-gray-50 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose WorkLink?</h2>
-            <p className="text-xl text-gray-500">We make hiring safe, simple, and secure.</p>
-          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+             
+             {/* Left Content */}
+             <div className="order-2 lg:order-1">
+                <div className="mb-12">
+                   <h2 className="text-4xl font-bold text-gray-900 mb-6">Experience the Difference</h2>
+                   <p className="text-lg text-gray-600 leading-relaxed">
+                     We've reimagined how services are delivered. From instant matching to secure payments, everything is designed for your peace of mind.
+                   </p>
+                </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <FeatureCard 
-              icon={Shield} 
-              title="Verified Professionals" 
-              description="Every worker undergoes a rigorous background check and skills verification process before joining our platform."
-              delay={0}
-            />
-            <FeatureCard 
-              icon={Zap} 
-              title="Smart AI Matching" 
-              description="Our advanced algorithms find the perfect match for your job in seconds based on location, skills, and availability."
-              delay={0.2}
-            />
-            <FeatureCard 
-              icon={Award} 
-              title="Satisfaction Guaranteed" 
-              description="Payment is only released when you are 100% satisfied with the work. We hold funds securely until the job is done."
-              delay={0.4}
-            />
+                <div className="grid gap-6">
+                  {/* Custom horizontal cards for this layout */}
+                  <div className="flex gap-4 p-6 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="shrink-0 w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                      <Shield className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">Bank-Grade Security</h3>
+                      <p className="text-gray-500 text-sm">Your data and payments are protected by industry-leading encryption.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 p-6 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="shrink-0 w-12 h-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center">
+                      <CheckCircle className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">Satisfaction Guarantee</h3>
+                      <p className="text-gray-500 text-sm">Not happy? We'll make it right. Your satisfaction is our top priority.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 p-6 bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                    <div className="shrink-0 w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+                      <Zap className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">Fast & Reliable</h3>
+                      <p className="text-gray-500 text-sm">Get matched with available professionals within minutes, not days.</p>
+                    </div>
+                  </div>
+                </div>
+             </div>
+
+             {/* Right Image */}
+             <div className="order-1 lg:order-2 relative">
+                <div className="absolute inset-0 bg-primary-100 rounded-[3rem] transform rotate-3 scale-95 translate-y-4"></div>
+                <img 
+                  src={featureImage} 
+                  alt="Skilled construction work" 
+                  className="relative w-full h-[600px] object-cover rounded-[2.5rem] shadow-2xl"
+                />
+                
+                <div className="absolute -bottom-6 -left-6 bg-white p-6 rounded-2xl shadow-xl max-w-xs border border-gray-100 hidden sm:block">
+                  <div className="flex items-center gap-4">
+                    <div className="flex -space-x-4">
+                      <div className="w-12 h-12 rounded-full border-4 border-white bg-gray-200 bg-[url('https://i.pravatar.cc/100?img=33')] bg-cover"></div>
+                      <div className="w-12 h-12 rounded-full border-4 border-white bg-gray-200 bg-[url('https://i.pravatar.cc/100?img=12')] bg-cover"></div>
+                      <div className="w-12 h-12 rounded-full border-4 border-white bg-gray-200 bg-[url('https://i.pravatar.cc/100?img=5')] bg-cover"></div>
+                    </div>
+                    <div>
+                       <p className="font-bold text-gray-900">Join our team</p>
+                       <p className="text-xs text-gray-500">Become a pro today</p>
+                    </div>
+                  </div>
+                </div>
+             </div>
+
           </div>
         </div>
       </section>

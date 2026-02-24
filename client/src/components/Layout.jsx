@@ -8,8 +8,8 @@ import LanguageSwitcher from './LanguageSwitcher.jsx';
 import { AnimatePresence } from 'framer-motion';
 import PageTransition from './ui/PageTransition.jsx';
 import { 
-  Menu, X, Bell, MessageSquare, User, Briefcase, 
-  Home, LogOut, Search, Sparkles, HelpCircle, PhoneIncoming, PhoneOff 
+  Menu, X, Bell, MessageSquare, User, Users, Briefcase, 
+  Home, LogOut, Search, Sparkles, HelpCircle, PhoneIncoming, PhoneOff, AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Toaster, toast } from 'react-hot-toast';
@@ -76,27 +76,23 @@ export default function Layout() {
     }
   }, [incomingCall, location.pathname, navigate, setIncomingCall, socket]);
 
-  const navigation = [
-    { name: 'Home', href: '/', icon: Home },
-    // Simplified Worker Navigation
-    ...(user?.roles?.includes('worker') 
-      ? [
-          // Consolidate "Find Work" and "My Tasks" into "Jobs"
-          { name: 'Jobs', href: '/worker-jobs', icon: Briefcase } 
-        ] 
-      : []
-    ),
-    ...(user?.roles?.includes('customer')
-      ? [
-          { name: 'My Jobs', href: '/jobs', icon: Briefcase }
-      ]
-      : []
-    ),
-    { name: 'Workers', href: '/workers', icon: User },
-    // Moved Assistant into a more subtle position or keep it concise
-     { name: 'Assistant', href: '/assistant', icon: Sparkles },
-    { name: 'Help', href: '/help', icon: HelpCircle },
-  ];
+  const navigation = [];
+
+  if (user) {
+    if (user.roles?.includes('customer')) {
+        navigation.push({ name: 'My Jobs', href: '/jobs', icon: Briefcase });
+    }
+    
+    if (user.roles?.includes('worker')) {
+        navigation.push({ name: 'My Work', href: '/worker-jobs', icon: Briefcase });
+    }
+  }
+
+  navigation.push(
+      { name: 'Find Updates', href: '/workers', icon: Users },
+      { name: 'AI Assistant', href: '/assistant', icon: Sparkles },
+      { name: 'Support', href: '/help', icon: HelpCircle }
+  );
 
   const userNavigation = [
     { name: t('nav.notifications'), href: '/notifications', icon: Bell },
