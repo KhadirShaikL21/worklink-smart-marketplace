@@ -290,19 +290,45 @@ export async function assignWorkers(req, res) {
 }
 
 export async function listMyJobs(req, res) {
+  const { role } = req.query;
   const filters = [];
-  if (req.user.roles?.includes('customer')) {
-    filters.push({ customer: req.user._id });
-  }
-  if (req.user.roles?.includes('worker')) {
-    filters.push({ assignedWorkers: req.user._id });
+
+  if (role) {
+    if (role === 'worker') {
+       // Only if user has worker role
+       if (!req.user.roles?.includes('worker')) {
+          return res.status(403).json({ message: 'Access denied: Worker role required' });
+       }
+       filters.push({ assignedWorkers: req.user._id });
+    } else if (role === 'customer') {
+       // Only if user has customer role
+       if (!req.user.roles?.includes('customer')) {
+          return res.status(403).json({ message: 'Access denied: Customer role required' });
+       }
+       filters.push({ customer: req.user._id });
+    } else {
+       return res.status(400).json({ message: 'Invalid role specified' });
+    }
+  } else {
+    // Default behavior for backward compatibility or general view
+    if (req.user.roles?.includes('customer')) {
+      filters.push({ customer: req.user._id });
+    }
+    if (req.user.roles?.includes('worker')) {
+      filters.push({ assignedWorkers: req.user._id });
+    }
   }
 
-  if (!filters.length) {
+  if (!filters.length && !role) {
     return res.status(403).json({ message: 'No roles to view jobs' });
   }
+  
+  // If filters is empty here (e.g. role was valid but user didn't match), the checks above handle 403.
+  // Wait, if filters is empty because of logic error, we need to handle it.
+  // Actually, if role is passed, filters will have 1 item or we return 403. 
+  // If role is NOT passed, we try to add both. If both fail, filters is empty.
 
-  const jobs = await Job.find({ $or: filters }).sort({ createdAt: -1 });
+  const jobs = await Job.find({ $or: filters }).sort({ createdAt: -1 });  
   return res.json({ jobs });
 }
 
@@ -657,7 +683,7 @@ export async function applyForJob(req, res) {
 
 export async function raiseDispute(req, res) {
   const { jobId } = req.params;
-  const { reason, description } = req.body;
+  const { reason, description, category } = req.body;
   
   try {
     const job = await Job.findById(jobId);
@@ -675,10 +701,18 @@ export async function raiseDispute(req, res) {
     // Use set to ensure nested object is updated or created
     job.dispute = {
       raisedBy: req.user._id,
+      category: category || 'other',
       reason,
-      description,
+      // Ensure description is captured. If not provided, fallback to reason or default text.
+      description: description || reason || 'No detailed description provided by user.',
       status: 'open',
-      createdAt: new Date()
+      createdAt: new Date(),
+      history: [{
+        action: 'opened',
+        by: req.user._id,
+        note: `Dispute raised. Category: ${category || 'other'}. Issue: ${reason}`,
+        timestamp: new Date()
+      }]
     };
     
     await job.save();
@@ -738,4 +772,21 @@ export async function triggerSOS(req, res) {
     res.status(500).json({ message: 'Failed to trigger SOS' });
   }
 }
+
+export async function getMyDisputes(req, res) {
+  try {
+    const disputes = await Job.find({
+      $or: [{ customer: req.user._id }, { assignedWorkers: req.user._id }],
+      'dispute.status': { $exists: true, $ne: 'none' }
+    })
+    .populate('customer', 'name email')
+    .populate('assignedWorkers', 'name email')
+
+    res.json({ disputes });
+  } catch (error) {
+    console.error('Error fetching my disputes:', error);
+    res.status(500).json({ message: 'Server error fetching disputes' });
+  }
+}
+
 

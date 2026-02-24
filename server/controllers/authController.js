@@ -68,9 +68,9 @@ export async function register(req, res) {
     email,
     phone,
     passwordHash: password,
-    roles: isWorker ? ['worker', 'customer'] : ['customer'],
+    roles: Boolean(isWorker) ? ['worker'] : ['customer'],
     isWorker: Boolean(isWorker),
-    isCustomer: true,
+    isCustomer: !Boolean(isWorker),
     avatarUrl: req.file ? req.file.path : undefined
   });
 
