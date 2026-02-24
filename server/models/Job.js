@@ -37,11 +37,24 @@ const JobSchema = new mongoose.Schema(
     }],
     dispute: {
       raisedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-      reason: { type: String, required: false },
+      category: { 
+        type: String, 
+        enum: ['quality', 'timeliness', 'behavior', 'payment', 'cancellation', 'other'] 
+      },
       description: { type: String, required: false },
-      status: { type: String, enum: ['open', 'resolved', 'closed'], default: 'open' },
+      status: { type: String, enum: ['open', 'in_review', 'resolved', 'closed'], default: 'open' },
       createdAt: { type: Date, default: Date.now },
-      resolution: { type: String }
+      history: [{
+        action: { type: String, required: true }, // 'opened', 'comment', 'status_change', 'resolution'
+        by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        note: { type: String },
+        timestamp: { type: Date, default: Date.now }
+      }],
+      resolution: {
+        outcome: { type: String }, // 'refunded', 'fulfilled', 'dismissed'
+        adminNote: { type: String },
+        resolvedAt: { type: Date }
+      }
     },
     team: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Task' }],
     media: {

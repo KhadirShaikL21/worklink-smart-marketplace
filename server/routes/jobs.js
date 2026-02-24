@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { createJob, formTeam, formTeamOptimized, listMyJobs, listOpenJobs, applyForJob, getJob, assignWorkers, verifyStartOtp, completeJob, startTravel, arrivedAtLocation, acceptJob, raiseDispute, triggerSOS } from '../controllers/jobController.js';
+import { createJob, formTeam, formTeamOptimized, listMyJobs, getMyDisputes, listOpenJobs, applyForJob, getJob, assignWorkers, verifyStartOtp, completeJob, startTravel, arrivedAtLocation, acceptJob, raiseDispute, triggerSOS } from '../controllers/jobController.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { uploadMixed } from '../middleware/uploads.js';
 
@@ -20,6 +20,7 @@ router.post(
 
 router.get('/', requireAuth, listMyJobs);
 router.get('/open', requireAuth, requireRole('worker'), listOpenJobs);
+router.get('/my-disputes', requireAuth, getMyDisputes);
 router.get('/:jobId', requireAuth, getJob);
 router.post('/:jobId/apply', requireAuth, requireRole('worker'), applyForJob);
 router.post('/:jobId/assign', requireAuth, requireRole('customer'), assignWorkers);

@@ -97,6 +97,12 @@ graph TD
 - **Smart Matching:** Workers are filtered by **Skill Match** AND **Wait-time** AND **Distance** (using MongoDB `$near` queries).
 - **Real-Time Map:** Customers can see the worker's live location approaching their house on a map (Leaflet.js) once a job is started.
 
+### 🛡️ 4. Strict Role Separation & Trust
+
+- **Role-Based Experience:** Users register strictly as either a **Customer** (Hire Talent) OR a **Worker** (Find Work), ensuring streamlined workflows for each user type.
+- **Dedicated Interfaces:** tailored dashboards and navigation for distinct user journeys.
+- **Verification:** Worker profiles include skill tags, experience years, and verification badges.
+
 ### 🎥 3. Video Descriptions & Proof
 
 - **Visual Problem Statement:** Customers can record and upload a 15-second video explaining the issue (e.g., leaking pipe), giving workers better context before accepting.

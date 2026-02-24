@@ -16,6 +16,7 @@ import Home from './pages/Home.jsx';
 import ThankYou from './pages/ThankYou.jsx';
 import VerifyEmail from './pages/VerifyEmail.jsx';
 import FindWork from './pages/FindWork.jsx';
+import MyDisputes from './pages/MyDisputes.jsx';
 import HelpCenter from './pages/HelpCenter.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="find-work" element={<Protected><FindWork /></Protected>} />
         <Route path="worker-jobs" element={<Protected><WorkerJobs /></Protected>} />
         <Route path="help" element={<HelpCenter />} />
+        <Route path="my-disputes" element={<Protected><MyDisputes /></Protected>} />
         <Route path="notifications" element={<Protected><Notifications /></Protected>} />
         <Route path="chat" element={<Protected><Chat /></Protected>} />
         <Route path="profile" element={<Protected><Profile /></Protected>} />
