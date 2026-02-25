@@ -56,12 +56,12 @@
   - [x] Backend: Calculate weekly/monthly top workers based on ratings & jobs completed.
   - [x] Frontend: "Top Workers" section on Home/Worker list.
 
-## Phase 7: Advanced Location & Alerts (Next Priority)
+## Phase 7: Advanced Location & Alerts (Completed)
 
-- [ ] **Geofencing Notifications**
-  - [ ] Backend: Calculate distance between Worker and Job location.
-  - [ ] Backend: Trigger "Worker Appriving Soon" notification when within 1km.
-  - [ ] Frontend: Visual indicator on map (e.g., "Arriving in 5 mins").
+- [x] **Geofencing Notifications**
+  - [x] Backend: Calculate distance between Worker and Job location.
+  - [x] Backend: Trigger "Worker Appriving Soon" notification when within 1km.
+  - [x] Frontend: Visual indicator on map (e.g., "Arriving in 5 mins").
 
 ## Phase 8: Experience Polish & Globalization (Next Priority)
 

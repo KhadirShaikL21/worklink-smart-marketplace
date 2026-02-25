@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext.jsx';
 import { User, Phone, Mail, CheckCircle, XCircle, Camera, Shield, Loader2, AlertTriangle, MapPin, Briefcase, Star, Edit2, Save, X, Award, Clock, IndianRupee } from 'lucide-react';
@@ -8,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 
 export default function Profile() {
+  const { t } = useTranslation();
   const { user: currentUser, refreshUser, loading: authLoading } = useAuth();
   const { userId } = useParams();
   
@@ -203,7 +205,7 @@ export default function Profile() {
                         ) : (
                           <div className="flex flex-col items-center text-white">
                              <Camera className="w-8 h-8 mb-1" />
-                             <span className="text-xs font-medium">Change Photo</span>
+                             <span className="text-xs font-medium">{t('profile.changePhoto')}</span>
                           </div>
                         )}
                         <input type="file" accept="image/*" onChange={uploadAvatar} disabled={uploading} className="hidden" />
@@ -219,15 +221,15 @@ export default function Profile() {
                         <p className="text-gray-500 font-medium flex items-center gap-2 mt-1">
                             {isWorker ? (
                                 <>
-                                    <span className="text-primary-600 font-semibold">{workerProfile.title || 'Skilled Professional'}</span>
+                                    <span className="text-primary-600 font-semibold">{workerProfile.title || t('profile.skilledProfessional')}</span>
                                     <span className="w-1.5 h-1.5 bg-gray-300 rounded-full hidden sm:block"></span>
                                 </>
-                            ) : 'Valued Customer'}
+                            ) : t('profile.valuedCustomer')}
                             
                             {isWorker && (
                                 <span className={clsx("inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide", 
                                     workerProfile.isAvailable ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-red-100 text-red-700 border border-red-200')}>
-                                    {workerProfile.isAvailable ? 'Available for Work' : 'Currently Busy'}
+                                    {workerProfile.isAvailable ? t('profile.available') : t('profile.busy')}
                                 </span>
                             )}
                         </p>
@@ -240,14 +242,14 @@ export default function Profile() {
                                 className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-all hover:shadow-md flex items-center gap-2 shadow-sm"
                             >
                                 <AlertTriangle className="w-4 h-4 text-orange-500" />
-                                <span className="hidden sm:inline">Disputes</span>
+                                <span className="hidden sm:inline">{t('profile.disputes')}</span>
                             </Link>
                             <button 
                                 onClick={() => setIsEditing(true)}
                                 className="px-5 py-2.5 bg-gray-900 text-white rounded-xl font-medium hover:bg-black transition-all hover:shadow-lg flex items-center gap-2 shadow-sm active:scale-95 duration-200"
                             >
                                 <Edit2 className="w-4 h-4" />
-                                Edit Profile
+                                {t('profile.editProfile')}
                             </button>
                         </div>
                      )}
@@ -269,8 +271,8 @@ export default function Profile() {
             >
                 <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-100">
                     <div>
-                        <h2 className="text-xl font-bold text-gray-900">Edit Profile Details</h2>
-                        <p className="text-sm text-gray-500 mt-1">Update your personal information and professional details</p>
+                        <h2 className="text-xl font-bold text-gray-900">{t('profile.editDetails')}</h2>
+                        <p className="text-sm text-gray-500 mt-1">{t('profile.updateInfo')}</p>
                     </div>
                     <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                         <X className="w-5 h-5 text-gray-400" />
@@ -281,11 +283,11 @@ export default function Profile() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-4">
                             <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                                <User className="w-4 h-4" /> Personal Info
+                                <User className="w-4 h-4" /> {t('profile.personalInfo')}
                             </h3>
                             <div className="grid gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('profile.fullName')}</label>
                                     <input
                                         type="text"
                                         value={editForm.name}
@@ -295,7 +297,7 @@ export default function Profile() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone Number</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('profile.phone')}</label>
                                     <input
                                         type="tel"
                                         value={editForm.phone}
@@ -310,11 +312,11 @@ export default function Profile() {
                         {isWorker && (
                             <div className="space-y-4">
                                 <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                                    <Briefcase className="w-4 h-4" /> Professional Info
+                                    <Briefcase className="w-4 h-4" /> {t('profile.professionalInfo')}
                                 </h3>
                                 <div className="grid gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Professional Title</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('profile.title')}</label>
                                         <input
                                             type="text"
                                             value={editForm.title}
@@ -325,7 +327,7 @@ export default function Profile() {
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Hourly Rate (₹)</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('profile.hourlyRate')}</label>
                                             <div className="relative">
                                                 <IndianRupee className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
                                                 <input
@@ -337,7 +339,7 @@ export default function Profile() {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">Experience (Years)</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('profile.experience')}</label>
                                             <input
                                                 type="number"
                                                 value={editForm.experienceYears}
@@ -361,11 +363,11 @@ export default function Profile() {
                                         onChange={e => setEditForm({...editForm, bio: e.target.value})}
                                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all bg-gray-50/50"
                                         rows="4"
-                                        placeholder="Tell customers about your expertise and work ethic..."
+                                        placeholder={t('profile.bioPlaceholder')}
                                     />
                                 </div>
                                 <div className="space-y-4">
-                                    <label className="block text-sm font-medium text-gray-700">Skills (Comma separated)</label>
+                                    <label className="block text-sm font-medium text-gray-700">{t('profile.skills')}</label>
                                     <textarea
                                         value={editForm.skills}
                                         onChange={e => setEditForm({...editForm, skills: e.target.value})}
@@ -373,7 +375,7 @@ export default function Profile() {
                                         rows="4"
                                         placeholder="Plumbing, Leak Detection, Pipe Fitting"
                                     />
-                                    <p className="text-xs text-gray-500">Skills will appear as tags on your profile.</p>
+                                    <p className="text-xs text-gray-500">{t('profile.skillsHelp')}</p>
                                 </div>
                              </div>
                         </div>
@@ -385,7 +387,7 @@ export default function Profile() {
                             onClick={() => setIsEditing(false)}
                             className="px-6 py-2.5 text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 font-medium transition-colors"
                         >
-                            Cancel
+                            {t('profile.cancel')}
                         </button>
                         <button
                             type="submit"
@@ -393,7 +395,7 @@ export default function Profile() {
                             className="px-6 py-2.5 text-white bg-primary-600 hover:bg-primary-700 rounded-xl font-medium shadow-lg shadow-primary-600/20 flex items-center gap-2 active:scale-95 transition-all"
                         >
                             {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                            Save Changes
+                            {t('profile.saveChanges')}
                         </button>
                     </div>
                 </form>
@@ -410,7 +412,7 @@ export default function Profile() {
                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
                       <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                      Rating & Stats
+                      {t('profile.stats.title')}
                    </h3>
                    <div className="flex items-center mb-6">
                      <span className="text-5xl font-extrabold text-gray-900 mr-4">{user.ratingStats?.average || '0.0'}</span>
@@ -420,14 +422,14 @@ export default function Profile() {
                            <Star key={s} className={`w-4 h-4 ${s <= Math.round(user.ratingStats?.average || 0) ? 'fill-current' : 'text-gray-200'}`} />
                          ))}
                        </div>
-                       <p className="text-sm font-medium text-gray-500">{user.ratingStats?.count || 0} Reviews</p>
+                       <p className="text-sm font-medium text-gray-500">{user.ratingStats?.count || 0} {t('profile.stats.reviews')}</p>
                      </div>
                    </div>
                    
                    <div className="space-y-4 pt-4 border-t border-gray-100">
                      <div className="flex justify-between items-center text-sm">
                        <span className="text-gray-500 flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-500" /> Jobs Done
+                          <CheckCircle className="w-4 h-4 text-green-500" /> {t('profile.stats.jobsDone')}
                        </span>
                        <span className="font-bold text-gray-900">{workerProfile.completedJobs || user.completedJobs || 0}</span>
                      </div>
@@ -435,15 +437,15 @@ export default function Profile() {
                         <>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-gray-500 flex items-center gap-2">
-                                    <IndianRupee className="w-4 h-4 text-green-600" /> Hourly Rate
+                                    <IndianRupee className="w-4 h-4 text-green-600" /> {t('profile.hourlyRate')}
                                 </span>
                                 <span className="font-bold text-gray-900">₹{workerProfile.hourlyRate || 0}/hr</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                                 <span className="text-gray-500 flex items-center gap-2">
-                                    <Clock className="w-4 h-4 text-primary-500" /> Experience
+                                    <Clock className="w-4 h-4 text-primary-500" /> {t('profile.experience')}
                                 </span>
-                                <span className="font-bold text-gray-900">{workerProfile.experienceYears || 0} Years</span>
+                                <span className="font-bold text-gray-900">{workerProfile.experienceYears || 0} {t('profile.years')}</span>
                             </div>
                         </>
                      )}
@@ -456,7 +458,7 @@ export default function Profile() {
                      <div className="absolute top-0 right-0 -mt-2 -mr-2 bg-yellow-400 w-24 h-24 rounded-full opacity-10 blur-2xl"></div>
                      <h3 className="text-lg font-bold text-yellow-900 mb-4 flex items-center gap-2 relative z-10">
                        <Award className="w-5 h-5 text-yellow-600" />
-                       Achievements
+                       {t('profile.achievements')}
                      </h3>
                      <div className="flex flex-col gap-3 relative z-10">
                        {workerProfile.badges.map((badge, idx) => (
@@ -475,36 +477,36 @@ export default function Profile() {
                  {/* Contact & Verification */}
                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                        <Shield className="w-5 h-5 text-gray-400" /> Verification
+                        <Shield className="w-5 h-5 text-gray-400" /> {t('profile.verification.title')}
                     </h3>
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                          <div className="flex items-center text-sm font-medium text-gray-700">
                            <Mail className="w-4 h-4 mr-2.5 text-gray-400" />
-                           <span>Email</span>
+                           <span>{t('profile.verification.email')}</span>
                          </div>
                          {user.verification?.emailVerified ? (
                            <span className="text-green-700 bg-green-100 px-2.5 py-1 rounded-md text-xs font-bold flex items-center">
-                             Verified
+                             {t('profile.verification.verified')}
                            </span>
                          ) : (
                            <span className="text-yellow-700 bg-yellow-100 px-2.5 py-1 rounded-md text-xs font-bold flex items-center">
-                             Pending
+                             {t('profile.verification.pending')}
                            </span>
                          )}
                       </div>
                       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                          <div className="flex items-center text-sm font-medium text-gray-700">
                            <Phone className="w-4 h-4 mr-2.5 text-gray-400" />
-                           <span>Phone</span>
+                           <span>{t('profile.verification.phone')}</span>
                          </div>
                          {user.verification?.phoneVerified ? (
                            <span className="text-green-700 bg-green-100 px-2.5 py-1 rounded-md text-xs font-bold flex items-center">
-                             Verified
+                             {t('profile.verification.verified')}
                            </span>
                          ) : (
                            <span className="text-yellow-700 bg-yellow-100 px-2.5 py-1 rounded-md text-xs font-bold flex items-center">
-                             Pending
+                             {t('profile.verification.pending')}
                            </span>
                          )}
                       </div>
@@ -517,7 +519,7 @@ export default function Profile() {
                           onClick={requestOtp}
                           className="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-black transition-colors shadow-sm"
                         >
-                          Verify Phone Number
+                          {t('profile.verification.verifyPhone')}
                         </button>
                       )}
                       
@@ -530,22 +532,22 @@ export default function Profile() {
                       {otpStatus === 'sent' && (
                         <form onSubmit={verifyOtp} className="space-y-3">
                           <div className="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg border border-blue-100">
-                             Code sent to your phone.
-                             {devCode && <div className="font-mono mt-1 font-bold">Dev Code: {devCode}</div>}
+                             {t('profile.verification.codeSent')}
+                             {devCode && <div className="font-mono mt-1 font-bold">{t('profile.verification.devCode')} {devCode}</div>}
                           </div>
                           
                           <input
                             type="text"
                             value={otpCode}
                             onChange={e => setOtpCode(e.target.value)}
-                            placeholder="Enter 4-digit Code"
+                            placeholder={t('profile.verification.enterCode')}
                             className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500/20 text-center tracking-widest font-mono font-bold"
                           />
                           <button 
                             type="submit"
                             className="w-full py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 shadow-sm shadow-green-600/20"
                           >
-                            Verify & Complete
+                            {t('profile.verification.submit')}
                           </button>
                         </form>
                       )}
@@ -572,16 +574,16 @@ export default function Profile() {
                   <>
                     <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
                       <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                         <User className="w-5 h-5 text-primary-600" /> About Me
+                         <User className="w-5 h-5 text-primary-600" /> {t('profile.aboutMe')}
                       </h3>
                       <p className="text-gray-600 leading-relaxed text-lg font-light">
-                        {workerProfile.bio || <span className="italic text-gray-400">No bio provided yet. Add a bio to tell customers about yourself.</span>}
+                        {workerProfile.bio || <span className="italic text-gray-400">{t('profile.noBio')}</span>}
                       </p>
                     </div>
 
                     <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
                       <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                         <CheckCircle className="w-5 h-5 text-primary-600" /> Skills & Expertise
+                         <CheckCircle className="w-5 h-5 text-primary-600" /> {t('profile.skillsTitle')}
                       </h3>
                       <div className="flex flex-wrap gap-2">
                         {workerProfile.skills && workerProfile.skills.length > 0 ? (
@@ -592,7 +594,7 @@ export default function Profile() {
                           ))
                         ) : (
                            <div className="w-full text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400">
-                               No skills listed.
+                               {t('profile.noSkills')}
                            </div>
                         )}
                       </div>
@@ -602,9 +604,9 @@ export default function Profile() {
                     <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
                         <div className="flex items-center justify-between mb-8">
                             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                <Star className="w-5 h-5 text-primary-600" /> Client Reviews
+                                <Star className="w-5 h-5 text-primary-600" /> {t('profile.reviewsTitle')}
                             </h3>
-                            <span className="text-sm font-medium text-gray-500">{user.reviews?.length || 0} Total</span>
+                            <span className="text-sm font-medium text-gray-500">{user.reviews?.length || 0} {t('profile.total')}</span>
                         </div>
                         
                         <div className="space-y-8">
@@ -621,7 +623,7 @@ export default function Profile() {
                                             )}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-gray-900">{review.reviewerName || 'Anonymous Customer'}</p>
+                                            <p className="font-bold text-gray-900">{review.reviewerName || t('profile.anonymous')}</p>
                                             <p className="text-xs text-gray-500 font-medium">{new Date(review.date || Date.now()).toLocaleDateString()}</p>
                                         </div>
                                     </div>
@@ -643,8 +645,8 @@ export default function Profile() {
                                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                                     <Star className="w-6 h-6 text-gray-300" />
                                 </div>
-                                <p className="text-gray-900 font-medium">No reviews yet</p>
-                                <p className="text-sm text-gray-500">Reviews will appear here after completing jobs.</p>
+                                <p className="text-gray-900 font-medium">{t('profile.noReviews')}</p>
+                                <p className="text-sm text-gray-500">{t('profile.reviewsPlaceholder')}</p>
                             </div>
                             )}
                         </div>
@@ -657,12 +659,12 @@ export default function Profile() {
                        <div className="w-20 h-20 bg-primary-50 rounded-full flex items-center justify-center mb-6">
                           <User className="w-10 h-10 text-primary-500" />
                        </div>
-                       <h3 className="text-2xl font-bold text-gray-900 mb-2">Customer Account</h3>
+                       <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('profile.customerAccountTitle')}</h3>
                        <p className="text-gray-500 max-w-md mx-auto mb-8">
-                         You are registered as a customer. You can post jobs, hire workers, and manage your projects from your dashboard.
+                         {t('profile.customerAccountDesc')}
                        </p>
                        <Link to="/jobs/new" className="px-8 py-3 bg-primary-600 text-white rounded-xl font-bold shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all active:scale-95">
-                          Post a Job
+                          {t('profile.customerAccountAction')}
                        </Link>
                     </div>
                  )}

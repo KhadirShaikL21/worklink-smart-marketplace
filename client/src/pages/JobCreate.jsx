@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
 import { 
   Sparkles, Save, ArrowRight, Loader2, AlertCircle, CheckCircle2, Video, 
@@ -40,6 +41,7 @@ function LocationMarker({ position, setPosition }) {
 }
 
 export default function JobCreate() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [description, setDescription] = useState('');
@@ -252,8 +254,8 @@ export default function JobCreate() {
       <div className="bg-white border-b border-gray-100 sticky top-0 z-30 bg-opacity-90 backdrop-blur-md">
          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
              <div>
-                <h1 className="text-xl font-bold text-gray-900">Post a Job</h1>
-                <p className="text-xs text-gray-500">Let AI help you find the right talent</p>
+                <h1 className="text-xl font-bold text-gray-900">{t('jobCreate.pageTitle')}</h1>
+                <p className="text-xs text-gray-500">{t('jobCreate.pageSubtitle')}</p>
              </div>
              <button 
                 onClick={onSubmit} 
@@ -261,7 +263,7 @@ export default function JobCreate() {
                 disabled={submitting}
              >
                 {submitting ? <Loader2 className="animate-spin w-4 h-4"/> : <Save className="w-4 h-4" />}
-                Publish Job
+                {submitting ? t('jobCreate.publishing') : t('jobCreate.publish')}
              </button>
          </div>
       </div>
@@ -275,20 +277,20 @@ export default function JobCreate() {
                     <div className="bg-gradient-to-r from-primary-600 to-indigo-600 px-6 py-4">
                         <div className="flex items-center gap-2 text-white">
                              <Sparkles className="w-5 h-5 text-yellow-300" />
-                             <h2 className="font-bold">Smart Assistant</h2>
+                             <h2 className="font-bold">{t('jobCreate.smartAssistant')}</h2>
                         </div>
-                        <p className="text-primary-100 text-xs mt-1">Describe your issue or upload a photo. I'll fill the form for you.</p>
+                        <p className="text-primary-100 text-xs mt-1">{t('jobCreate.assistantDesc')}</p>
                     </div>
 
                     <div className="p-6 space-y-6">
                         {/* Text Input */}
                         <div>
-                             <label className={labelClasses}>What needs to be done?</label>
+                             <label className={labelClasses}>{t('jobCreate.whatNeedsDone')}</label>
                              <div className="relative">
                                  <textarea
                                      rows={6}
                                      className="block w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 resize-none text-sm transition-all"
-                                     placeholder="e.g. My kitchen sink is leaking heavily..."
+                                     placeholder={t('jobCreate.descriptionPlaceholder')}
                                      value={description}
                                      onChange={(e) => setDescription(e.target.value)}
                                  />
@@ -296,7 +298,7 @@ export default function JobCreate() {
                                     onClick={runAssistant}
                                     disabled={loading || !description.trim()}
                                     className="absolute bottom-3 right-3 p-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 transition-colors shadow-sm"
-                                    title="Generate Details"
+                                    title={t('jobCreate.generateDetails')}
                                  >
                                     {loading ? <Loader2 className="w-4 h-4 animate-spin"/> : <ArrowRight className="w-4 h-4"/>}
                                  </button>
@@ -308,7 +310,7 @@ export default function JobCreate() {
                                 <div className="w-full border-t border-gray-200" />
                             </div>
                             <div className="relative flex justify-center">
-                                <span className="bg-white px-2 text-xs text-gray-400 font-medium uppercase">Or use media</span>
+                                <span className="bg-white px-2 text-xs text-gray-400 font-medium uppercase">{t('jobCreate.orUsingMedia')}</span>
                             </div>
                         </div>
 
@@ -322,19 +324,19 @@ export default function JobCreate() {
                                      {analyzingImage ? (
                                          <>
                                             <Loader2 className="w-8 h-8 text-primary-600 animate-spin mb-2" />
-                                            <p className="text-sm text-gray-500">Analyzing...</p>
+                                            <p className="text-sm text-gray-500">{t('jobCreate.analyzing')}</p>
                                          </>
                                      ) : defectImage ? (
                                          <>
                                             <CheckCircle2 className="w-8 h-8 text-green-500 mb-2" />
                                             <p className="text-sm text-green-700 font-medium text-center px-4 truncate w-full">{defectImage.name}</p>
-                                            <p className="text-xs text-green-600">Analysis Complete</p>
+                                            <p className="text-xs text-green-600">{t('jobCreate.analysisComplete')}</p>
                                          </>
                                      ) : (
                                          <>
                                             <Camera className="w-8 h-8 text-gray-400 mb-2" />
-                                            <p className="text-sm text-gray-500"><span className="font-semibold text-primary-600">Click to upload</span> defect photo</p>
-                                            <p className="text-xs text-gray-400 mt-1">AI will detect the issue automatically</p>
+                                            <p className="text-sm text-gray-500"><span className="font-semibold text-primary-600">{t('jobCreate.uploadPhoto')}</span></p>
+                                            <p className="text-xs text-gray-400 mt-1">{t('jobCreate.assistantDesc')}</p>
                                          </>
                                      )}
                                  </div>
@@ -357,7 +359,7 @@ export default function JobCreate() {
                                  ) : (
                                      <div className="flex items-center gap-2 text-gray-500">
                                          <Video className="w-5 h-5 text-gray-400" />
-                                         <span className="text-sm font-medium">Add Video Explanation (Optional)</span>
+                                         <span className="text-sm font-medium">{t('jobCreate.videoNote')}</span>
                                          <input type="file" className="hidden" accept="video/*" onChange={e => setVideoFile(e.target.files[0])} />
                                      </div>
                                  )}
@@ -382,46 +384,48 @@ export default function JobCreate() {
                  {/* Basic Details Card */}
                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
                      <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                         <Building className="w-5 h-5 text-primary-600"/> Job Details
+                         <Building className="w-5 h-5 text-primary-600"/> {t('jobCreate.jobDetails')}
                      </h3>
                      
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                          <div className="md:col-span-2">
-                             <label className={labelClasses}>Job Title</label>
-                             <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className={inputClasses} placeholder="e.g. Fix Leaking Tap" />
+                             <label className={labelClasses}>{t('jobCreate.title')}</label>
+                             <input type="text" value={form.title} onChange={e => setForm({...form, title: e.target.value})} className={inputClasses} placeholder={t('jobCreate.descriptionPlaceholder')} />
                          </div>
                          
                          <div>
-                             <label className={labelClasses}>Category</label>
+                             <label className={labelClasses}>{t('jobCreate.category')}</label>
                              <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className={inputClasses}>
-                                 <option value="">Select Category</option>
-                                 <option value="Plumbing">Plumbing</option>
-                                 <option value="Electrical">Electrical</option>
-                                 <option value="Carpentry">Carpentry</option>
-                                 <option value="Cleaning">Cleaning</option>
-                                 <option value="Painting">Painting</option>
-                                 <option value="General">General/Other</option>
+                                 <option value="">{t('jobCreate.category')}</option>
+                                 <option value="Plumbing">{t('vernacular.plumber')}</option>
+                                 <option value="Electrical">{t('vernacular.electrician')}</option>
+                                 <option value="Carpentry">{t('vernacular.carpenter')}</option>
+                                 <option value="Painting">{t('vernacular.painter')}</option>
+                                 <option value="Masonry">{t('vernacular.mason')}</option>
+                                 <option value="Cleaning">{t('vernacular.cleaner')}</option>
+                                 <option value="Driver">{t('vernacular.driver')}</option>
                              </select>
                          </div>
+
 
                          <div>
-                             <label className={labelClasses}>Urgency</label>
+                             <label className={labelClasses}>{t('jobCreate.urgency')}</label>
                              <select value={form.urgency} onChange={e => setForm({...form, urgency: e.target.value})} className={inputClasses}>
-                                 <option value="low">Low - Whenever possible</option>
-                                 <option value="medium">Medium - Within a few days</option>
-                                 <option value="high">High - Need it today</option>
-                                 <option value="emergency">Emergency - NOW</option>
+                                 <option value="low">{t('jobCreate.low')}</option>
+                                 <option value="medium">{t('jobCreate.medium')}</option>
+                                 <option value="high">{t('jobCreate.high')}</option>
+                                 <option value="emergency">{t('jobCreate.emergency')}</option>
                              </select>
                          </div>
 
                          <div className="md:col-span-2">
-                             <label className={labelClasses}>Required Skills</label>
-                             <input type="text" value={form.skillsRequired} onChange={e => setForm({...form, skillsRequired: e.target.value})} className={inputClasses} placeholder="Pipe fitting, Drilling (comma separated)" />
+                             <label className={labelClasses}>{t('jobCreate.skills')}</label>
+                             <input type="text" value={form.skillsRequired} onChange={e => setForm({...form, skillsRequired: e.target.value})} className={inputClasses} placeholder={t('jobCreate.skills')} />
                          </div>
 
                          <div className="md:col-span-2">
-                             <label className={labelClasses}>Tasks List</label>
-                             <textarea rows={4} value={form.tasks} onChange={e => setForm({...form, tasks: e.target.value})} className={inputClasses} placeholder="List specific tasks..." />
+                             <label className={labelClasses}>{t('jobCreate.tasks')}</label>
+                             <textarea rows={4} value={form.tasks} onChange={e => setForm({...form, tasks: e.target.value})} className={inputClasses} placeholder={t('jobCreate.tasks')} />
                          </div>
                      </div>
                  </div>
@@ -429,20 +433,20 @@ export default function JobCreate() {
                  {/* Budget & Schedule */}
                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
                      <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                         <DollarSign className="w-5 h-5 text-green-600"/> Budget & Schedule
+                         <DollarSign className="w-5 h-5 text-green-600"/> {t('jobCreate.budget')} & {t('jobCreate.schedule')}
                      </h3>
 
                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
-                             <label className={labelClasses}>Min Budget (₹)</label>
+                             <label className={labelClasses}>{t('jobCreate.min')}</label>
                              <input type="number" value={form.budgetMin} onChange={e => setForm({...form, budgetMin: e.target.value})} className={inputClasses} placeholder="500" />
                         </div>
                         <div>
-                             <label className={labelClasses}>Max Budget (₹)</label>
+                             <label className={labelClasses}>{t('jobCreate.max')}</label>
                              <input type="number" value={form.budgetMax} onChange={e => setForm({...form, budgetMax: e.target.value})} className={inputClasses} placeholder="1500" />
                         </div>
                         <div>
-                             <label className={labelClasses}>Est. Hours</label>
+                             <label className={labelClasses}>{t('jobCreate.hoursEst')}</label>
                              <div className="relative">
                                  <Clock className="absolute left-3 top-3.5 w-4 h-4 text-gray-400" />
                                  <input type="number" value={form.hoursEstimate} onChange={e => setForm({...form, hoursEstimate: e.target.value})} className={clsx(inputClasses, "pl-10")} placeholder="2" />
@@ -454,7 +458,7 @@ export default function JobCreate() {
                  {/* Location Map */}
                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 overflow-hidden">
                      <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                         <MapPin className="w-5 h-5 text-red-500"/> Location
+                         <MapPin className="w-5 h-5 text-red-500"/> {t('jobCreate.location')}
                      </h3>
                      
                      <div className="h-80 rounded-xl overflow-hidden border border-gray-200 relative z-0">
@@ -472,7 +476,7 @@ export default function JobCreate() {
                              </MapContainer>
                          )}
                          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur p-2 rounded-lg shadow-md z-[1000] text-xs text-gray-500 font-medium border border-gray-200">
-                             Click map to update pin
+                             {t('jobCreate.dragMarker')}
                          </div>
                      </div>
                      <div className="mt-4 flex gap-4">

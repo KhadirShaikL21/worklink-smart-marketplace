@@ -3,11 +3,13 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { Mail, Lock, Loader2, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [form, setForm] = useState({ emailOrPhone: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,7 +21,7 @@ export default function Login() {
     
     // Quick validation
     if (!form.emailOrPhone || !form.password) {
-        setError('Please enter both email/phone and password');
+        setError(t('auth.enterBoth'));
         return;
     }
 
@@ -28,7 +30,7 @@ export default function Login() {
       navigate('/');
     } catch (err) {
       console.error(err);
-      setError(err.response?.data?.message || 'Invalid credentials. Please try again.');
+      setError(err.response?.data?.message || t('auth.invalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -48,11 +50,11 @@ export default function Login() {
                 <div className="h-12 w-12 bg-primary-600 rounded-xl flex items-center justify-center mb-6 shadow-lg shadow-primary-600/30">
                     <Lock className="h-6 w-6 text-white" />
                 </div>
-                <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">Welcome back</h2>
+                <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">{t('auth.welcomeBack')}</h2>
                 <p className="mt-2 text-sm text-gray-600">
-                    Don't have an account?{' '}
+                    {t('auth.noAccount')}{' '}
                     <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500 transition-colors">
-                        Sign up for free
+                        {t('auth.signUpFree')}
                     </Link>
                 </p>
             </div>
@@ -72,7 +74,7 @@ export default function Login() {
                 <div className="space-y-5">
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                            Email or Phone
+                            {t('auth.emailOrPhone')}
                         </label>
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors group-focus-within:text-primary-500 text-gray-400">
@@ -92,10 +94,10 @@ export default function Login() {
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
                             <label className="block text-sm font-semibold text-gray-700">
-                                Password
+                                {t('auth.password')}
                             </label>
                             <a href="#" className="text-sm font-medium text-primary-600 hover:text-primary-500">
-                                Forgot password?
+                                {t('auth.forgotPassword')}
                             </a>
                         </div>
                         <div className="relative group">
@@ -127,7 +129,7 @@ export default function Login() {
                             <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
                             <>
-                                Sign in <ArrowRight className="ml-2 w-4 h-4" />
+                                {t('auth.signIn')} <ArrowRight className="ml-2 w-4 h-4" />
                             </>
                         )}
                     </button>
@@ -135,7 +137,7 @@ export default function Login() {
             </form>
             
             <div className="mt-8 text-center text-xs text-gray-400">
-                Protected by reCAPTCHA and subject to the Privacy Policy and Terms of Service.
+                {t('auth.protectedBy')}
             </div>
         </div>
       </motion.div>

@@ -32,15 +32,20 @@ const StatCard = ({ number, label }) => (
   </div>
 );
 
-const CategoryCard = ({ icon: Icon, title, count }) => (
-  <Link to={`/workers?category=${title}`} className="group flex flex-col items-center p-6 bg-white rounded-xl border border-gray-100 hover:border-primary-500 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-    <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4 group-hover:bg-primary-50 transition-colors shadow-sm">
-      <Icon className="w-8 h-8 text-primary-600 group-hover:text-primary-700 transition-colors" />
-    </div>
-    <h3 className="font-bold text-gray-900 group-hover:text-primary-700 text-lg">{title}</h3>
-    <span className="text-sm text-gray-500 mt-2 font-medium bg-gray-50 px-3 py-1 rounded-full">{count} Professionals</span>
-  </Link>
-);
+const CategoryCard = ({ icon: Icon, title, count }) => {
+  const { t } = useTranslation();
+  return (
+    <Link to={`/workers?category=${title}`} className="group flex flex-col items-center p-6 bg-white rounded-xl border border-gray-100 hover:border-primary-500 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+      <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4 group-hover:bg-primary-50 transition-colors shadow-sm">
+        <Icon className="w-8 h-8 text-primary-600 group-hover:text-primary-700 transition-colors" />
+      </div>
+      <h3 className="font-bold text-gray-900 group-hover:text-primary-700 text-lg">{title}</h3>
+      <span className="text-sm text-gray-500 mt-2 font-medium bg-gray-50 px-3 py-1 rounded-full text-center">
+         {count === 'View All' ? t('home.categories.viewAll') : `${count} ${t('home.categories.professionals')}`}
+      </span>
+    </Link>
+  );
+};
 
 export default function Home() {
   const { user } = useAuth();
@@ -100,33 +105,33 @@ export default function Home() {
             >
               <motion.div variants={itemVariants} className="inline-flex items-center px-4 py-2 rounded-full bg-white shadow-sm border border-gray-100 text-primary-700 text-sm font-medium mb-8">
                 <span className="flex h-2 w-2 rounded-full bg-primary-600 mr-2 animate-pulse"></span>
-                The #1 Marketplace for Skilled Professionals
+                {t('home.heroBadge')}
               </motion.div>
               
               <motion.h1 variants={itemVariants} className="text-5xl lg:text-7xl font-bold tracking-tight text-gray-900 mb-8 leading-[1.1]">
-                {t('home.heroTitle') || "Find Expert Help for Every Task"}
+                {t('home.heroTitle')}
               </motion.h1>
               
               <motion.p variants={itemVariants} className="text-xl text-gray-600 mb-10 leading-relaxed max-w-lg">
-                Connect with verified plumbers, electricians, and more. Smart matching ensures you get the best pro for your needs instantly.
+                {t('home.heroSubtitle')}
               </motion.p>
               
               <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4">
                 {user?.roles?.includes('worker') ? (
                   <Link to="/find-work" className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold rounded-xl text-white bg-primary-600 hover:bg-primary-700 transition-all shadow-lg shadow-primary-600/25 hover:shadow-primary-600/40 hover:-translate-y-1">
-                    Find Work Now
+                    {t('home.findWorkBtn')}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 ) : (
                   <Link to="/jobs/new" className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold rounded-xl text-white bg-primary-600 hover:bg-primary-700 transition-all shadow-lg shadow-primary-600/25 hover:shadow-primary-600/40 hover:-translate-y-1">
-                    Post a Job Free
+                    {t('home.postJobBtn')}
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 )}
                 
                 <Link to="/workers" className="inline-flex items-center justify-center px-8 py-4 text-lg font-semibold rounded-xl text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 transition-all hover:-translate-y-1">
                   <Search className="mr-2 h-5 w-5 text-gray-500" />
-                  Explore Pros
+                  {t('home.exploreProsBtn')}
                 </Link>
               </motion.div>
 
@@ -141,7 +146,7 @@ export default function Home() {
                   <div className="flex text-yellow-400 mb-1">
                     {[1,2,3,4,5].map(i => <Star key={i} className="w-4 h-4 fill-current" />)}
                   </div>
-                  <p>Trusted by 2,000+ happy customers</p>
+                  <p>{t('home.trustedBy')}</p>
                 </div>
               </motion.div>
             </motion.div>
@@ -183,8 +188,8 @@ export default function Home() {
                        <Shield className="w-6 h-6 text-green-600" />
                      </div>
                      <div>
-                       <p className="font-bold text-gray-900 text-sm">100% Verified</p>
-                       <p className="text-xs text-gray-500">Safe & Secure</p>
+                       <p className="font-bold text-gray-900 text-sm">{t('home.verifiedBadge')}</p>
+                       <p className="text-xs text-gray-500">{t('home.safeSecure')}</p>
                      </div>
                    </div>
                  </motion.div>
@@ -200,14 +205,14 @@ export default function Home() {
                            <span className="font-bold text-2xl text-gray-900">4.9</span>
                            <Star className="w-5 h-5 fill-current" />
                         </div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Rating</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('home.rating')}</p>
                       </div>
                       <div className="h-10 w-px bg-gray-100"></div>
                       <div className="text-center">
                         <div className="flex items-center justify-center gap-1 text-primary-600 mb-1">
                            <span className="font-bold text-2xl">98%</span>
                         </div>
-                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Success</p>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{t('home.success')}</p>
                       </div>
                     </div>
                  </motion.div>
@@ -221,10 +226,10 @@ export default function Home() {
       <section className="py-12 bg-gray-50 border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-             <StatCard number="10k+" label="Jobs Completed" />
-             <StatCard number="500+" label="Verified Pros" />
-             <StatCard number="98%" label="Satisfaction" />
-             <StatCard number="24/7" label="Support" />
+             <StatCard number="10k+" label={t('home.stats.jobsCompleted')} />
+             <StatCard number="500+" label={t('home.stats.verifiedPros')} />
+             <StatCard number="98%" label={t('home.stats.satisfaction')} />
+             <StatCard number="24/7" label={t('home.stats.support')} />
           </div>
         </div>
       </section>
@@ -233,17 +238,17 @@ export default function Home() {
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Popular Services</h2>
-            <p className="text-xl text-gray-500 max-w-2xl mx-auto">Explore high-demand categories and find the right expert for your specific needs.</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{t('home.popularServices')}</h2>
+            <p className="text-xl text-gray-500 max-w-2xl mx-auto">{t('home.popularServicesDesc')}</p>
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            <CategoryCard icon={MapPin} title="Plumbing" count="120+" />
-            <CategoryCard icon={Zap} title="Electrical" count="85+" />
-            <CategoryCard icon={Shield} title="Cleaning" count="200+" />
-            <CategoryCard icon={Users} title="Moving" count="50+" />
-            <CategoryCard icon={Award} title="Painting" count="90+" />
-            <CategoryCard icon={Star} title="More" count="View All" />
+            <CategoryCard icon={MapPin} title={t('home.categories.plumbing')} count="120+" />
+            <CategoryCard icon={Zap} title={t('home.categories.electrical')} count="85+" />
+            <CategoryCard icon={Shield} title={t('home.categories.cleaning')} count="200+" />
+            <CategoryCard icon={Users} title={t('home.categories.moving')} count="50+" />
+            <CategoryCard icon={Award} title={t('home.categories.painting')} count="90+" />
+            <CategoryCard icon={Star} title={t('home.categories.more')} count="View All" />
           </div>
         </div>
       </section>
@@ -257,9 +262,9 @@ export default function Home() {
              {/* Left Content */}
              <div className="order-2 lg:order-1">
                 <div className="mb-12">
-                   <h2 className="text-4xl font-bold text-gray-900 mb-6">Experience the Difference</h2>
+                   <h2 className="text-4xl font-bold text-gray-900 mb-6">{t('home.featuresTitle')}</h2>
                    <p className="text-lg text-gray-600 leading-relaxed">
-                     We've reimagined how services are delivered. From instant matching to secure payments, everything is designed for your peace of mind.
+                     {t('home.featuresDesc')}
                    </p>
                 </div>
 
@@ -270,8 +275,8 @@ export default function Home() {
                       <Shield className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg text-gray-900 mb-1">Bank-Grade Security</h3>
-                      <p className="text-gray-500 text-sm">Your data and payments are protected by industry-leading encryption.</p>
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">{t('home.feature1Title')}</h3>
+                      <p className="text-gray-500 text-sm">{t('home.feature1Desc')}</p>
                     </div>
                   </div>
 
@@ -280,8 +285,8 @@ export default function Home() {
                       <CheckCircle className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg text-gray-900 mb-1">Satisfaction Guarantee</h3>
-                      <p className="text-gray-500 text-sm">Not happy? We'll make it right. Your satisfaction is our top priority.</p>
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">{t('home.feature2Title')}</h3>
+                      <p className="text-gray-500 text-sm">{t('home.feature2Desc')}</p>
                     </div>
                   </div>
 
@@ -290,8 +295,8 @@ export default function Home() {
                       <Zap className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg text-gray-900 mb-1">Fast & Reliable</h3>
-                      <p className="text-gray-500 text-sm">Get matched with available professionals within minutes, not days.</p>
+                      <h3 className="font-bold text-lg text-gray-900 mb-1">{t('home.feature3Title')}</h3>
+                      <p className="text-gray-500 text-sm">{t('home.feature3Desc')}</p>
                     </div>
                   </div>
                 </div>
@@ -367,7 +372,7 @@ export default function Home() {
                    <div className="pl-[4.5rem]">
                      <div className="flex gap-2 flex-wrap mb-3">
                         {worker.skills?.slice(0,3).map(skill => (
-                          <span key={skill} className="px-2.5 py-1 bg-gray-100 rounded-md text-xs font-medium text-gray-600 border border-gray-200">{skill}</span>
+                          <span key={skill} className="px-2.5 py-1 bg-gray-100 rounded-md text-xs font-medium text-gray-600 border border-gray-200">{t(`categories.${skill.toLowerCase()}`, skill)}</span>
                         ))}
                      </div>
                      <Link to={`/workers/${worker.user?._id || worker.user}`} className="text-primary-600 hover:text-primary-700 text-sm font-semibold inline-flex items-center group">

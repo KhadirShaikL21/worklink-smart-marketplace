@@ -478,10 +478,13 @@ export async function arrivedAtLocation(req, res) {
 
 export async function getJob(req, res) {
   const { jobId } = req.params;
-  const job = await Job.findById(jobId).populate('assignedWorkers', 'name email phone');
+  const job = await Job.findById(jobId)
+    .populate('assignedWorkers', 'name email phone avatarUrl ratingStats')
+    .populate('customer', 'name email avatarUrl');
   if (!job) return res.status(404).json({ message: 'Job not found' });
   
-  const isCustomer = job.customer.toString() === req.user._id.toString();
+  const customerId = job.customer._id || job.customer;
+  const isCustomer = customerId.toString() === req.user._id.toString();
   const isAssignedWorker = job.assignedWorkers?.some(w => w._id.toString() === req.user._id.toString());
   const isOpen = job.status === 'open';
 

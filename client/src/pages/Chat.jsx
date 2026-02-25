@@ -400,14 +400,14 @@ export default function Chat() {
           <div className="p-4 border-b border-gray-200">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <MessageSquare className="w-6 h-6 text-primary-600" />
-              Messages
+              {t('chat.messages')}
             </h2>
           </div>
           
           <div className="flex-1 overflow-y-auto">
             {rooms.length === 0 ? (
               <div className="p-4 text-center text-gray-500 text-sm">
-                No active conversations.
+                {t('chat.noConversations')}
               </div>
             ) : (
               rooms.map(room => (
@@ -457,7 +457,7 @@ export default function Chat() {
                       <h3 className="font-medium text-gray-900">{getRoomName(activeRoom)}</h3>
                       <span className="flex items-center gap-1.5 text-xs text-green-600">
                         <span className="w-1.5 h-1.5 rounded-full bg-green-600"></span>
-                        {activeRoom.type === 'group' ? `${activeRoom.participants.length} participants` : 'Active now'}
+                        {activeRoom.type === 'group' ? t('chat.participants', { count: activeRoom.participants.length }) : t('chat.activeNow')}
                       </span>
                     </div>
                 </div>
@@ -482,7 +482,7 @@ export default function Chat() {
                 ) : messages.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-gray-400">
                     <MessageSquare className="w-12 h-12 mb-3 opacity-20" />
-                    <p>No messages yet. Say hello!</p>
+                    <p>{t('chat.noMessages')}</p>
                   </div>
                 ) : (
                   [...messages].reverse().map((msg, idx) => {
@@ -574,7 +574,7 @@ export default function Chat() {
                     <input
                         value={body}
                         onChange={e => setBody(e.target.value)}
-                        placeholder="Type a message..."
+                        placeholder={t('chat.typeMessage')}
                         className="flex-1 rounded-full border-gray-300 focus:border-primary-500 focus:ring-primary-500 px-4 py-2 shadow-sm"
                         disabled={isUploadingAudio}
                     />
@@ -595,9 +595,9 @@ export default function Chat() {
               <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4">
                 <MessageSquare className="w-8 h-8 text-gray-300" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900">Select a conversation</h3>
+              <h3 className="text-lg font-medium text-gray-900">{t('chat.selectConversation')}</h3>
               <p className="text-sm max-w-xs text-center mt-1">
-                Choose a chat from the sidebar to start messaging.
+                {t('chat.chooseChat')}
               </p>
             </div>
           )}

@@ -74,7 +74,7 @@ export default function Workers() {
               className="block w-full pl-3 pr-8 py-2 text-sm border-none bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-gray-600 font-medium"
             >
               <option value="">{t('workers.allCategories')}</option>
-              {categories.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+              {categories.map(c => <option key={c} value={c}>{t(`categories.${c}`, c.charAt(0).toUpperCase() + c.slice(1))}</option>)}
             </select>
             
             <button
@@ -134,7 +134,7 @@ export default function Workers() {
                         <h3 className="text-lg font-semibold text-gray-900 group-hover:text-primary-600 transition-colors">{worker.name}</h3>
                         <p className="text-sm text-gray-500 flex items-center">
                           <Briefcase className="w-3 h-3 mr-1" />
-                          {worker.title || t('workers.worker', 'Worker')}
+                          {worker.title ? t(`categories.${worker.title.toLowerCase()}`, worker.title) : t('workers.worker', 'Worker')}
                         </p>
                       </div>
                     </div>
@@ -159,7 +159,7 @@ export default function Workers() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     {(worker.skills || []).slice(0, 3).map((skill, idx) => (
                       <span key={idx} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                        {skill}
+                        {t(`categories.${skill.toLowerCase()}`, skill)}
                       </span>
                     ))}
                     {(worker.skills?.length || 0) > 3 && (

@@ -6,11 +6,13 @@ import {
   ArrowRight, CheckCircle, AlertTriangle, Loader2 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import { JobDetailSkeleton } from '../components/ui/Skeleton';
 
 export default function FindWork() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(null);
@@ -29,7 +31,7 @@ export default function FindWork() {
       setJobs(openJobs);
     } catch (err) {
       console.error(err);
-      setError('Failed to load available jobs');
+      setError(t('findWork.failedLoad'));
     } finally {
       setLoading(false);
     }
@@ -46,12 +48,12 @@ export default function FindWork() {
     setSuccessMsg('');
     try {
       await api.post(`/api/jobs/${jobId}/apply`);
-      setSuccessMsg('Application sent! Use chat to follow up.');
+      setSuccessMsg(t('findWork.successApply'));
       // Remove from list or mark applied visually
       setJobs(prev => prev.filter(j => j._id !== jobId)); 
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to apply');
+      setError(err.response?.data?.message || t('findWork.failedApply'));
       setTimeout(() => setError(''), 3000);
     } finally {
       setApplying(null);
@@ -80,8 +82,8 @@ export default function FindWork() {
              animate={{ opacity: 1, y: 0 }}
              className="max-w-2xl"
            >
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight sm:text-4xl">Find Work That Matters</h1>
-              <p className="mt-3 text-lg text-gray-500">Discover new opportunities near you and grow your business.</p>
+              <h1 className="text-3xl font-bold text-gray-900 tracking-tight sm:text-4xl">{t('findWork.title')}</h1>
+              <p className="mt-3 text-lg text-gray-500">{t('findWork.subtitle')}</p>
            </motion.div>
 
            {/* Search Bar */}
@@ -93,7 +95,7 @@ export default function FindWork() {
                   <input
                       type="text"
                       className="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 sm:text-sm shadow-sm transition-all"
-                      placeholder="Search jobs by title or keyword..."
+                      placeholder={t('findWork.searchPlaceholder')}
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                   />
@@ -112,7 +114,7 @@ export default function FindWork() {
                                   : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
                           )}
                       >
-                          {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                          {cat === 'all' ? t('findWork.filterAll') : t(`vernacular.${cat}`, { defaultValue: cat.charAt(0).toUpperCase() + cat.slice(1) })}
                       </button>
                   ))}
               </div>
@@ -155,9 +157,9 @@ export default function FindWork() {
         ) : filteredJobs.length === 0 ? (
              <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
                  <Briefcase className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                 <h3 className="text-xl font-bold text-gray-900">No jobs found</h3>
-                 <p className="text-gray-500 max-w-sm mx-auto mt-2">Try adjusting your filters or check back later for new opportunities.</p>
-                 <button onClick={() => {setSearchTerm(''); setFilter('all');}} className="mt-6 text-indigo-600 font-semibold hover:text-indigo-700">Clear Filters</button>
+                 <h3 className="text-xl font-bold text-gray-900">{t('findWork.noJobsTitle')}</h3>
+                 <p className="text-gray-500 max-w-sm mx-auto mt-2">{t('findWork.noJobsDesc')}</p>
+                 <button onClick={() => {setSearchTerm(''); setFilter('all');}} className="mt-6 text-indigo-600 font-semibold hover:text-indigo-700">{t('findWork.clearFilters')}</button>
              </div>
         ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -178,7 +180,7 @@ export default function FindWork() {
                                          job.urgency === 'emergency' ? 'bg-red-50 text-red-700' : 
                                          job.urgency === 'high' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'
                                      )}>
-                                         {job.urgency}
+                                         {t(`vernacular.${job.urgency}`, { defaultValue: job.urgency })}
                                      </span>
                                      <h3 className="text-lg font-bold text-gray-900 mt-2 line-clamp-1 group-hover:text-indigo-600 transition-colors">
                                          {job.title}
@@ -186,7 +188,7 @@ export default function FindWork() {
                                  </div>
                                  <div className="text-right">
                                      <div className="text-lg font-bold text-gray-900">₹{job.budget?.min}</div>
-                                     <div className="text-xs text-gray-400">Fixed Rate</div>
+                                     <div className="text-xs text-gray-400">{t('findWork.fixedRate')}</div>
                                  </div>
                              </div>
 
@@ -197,7 +199,8 @@ export default function FindWork() {
                                  </div>
                                  <div className="flex items-center text-sm text-gray-500">
                                      <Clock className="w-4 h-4 mr-2 text-gray-400" />
-                                     <span>Posted {new Date(job.createdAt).toLocaleDateString()}</span>
+                                     <span>{t('findWork.posted')} {new Date(job.createdAt).toLocaleDateString()}</span>
+
                                  </div>
                              </div>
 
@@ -215,14 +218,14 @@ export default function FindWork() {
 
                         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center group-hover:bg-indigo-50/50 transition-colors">
                             <span className="text-sm font-medium text-gray-600 group-hover:text-indigo-600 flex items-center">
-                                View Details <ArrowRight className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                                {t('findWork.viewDetails')} <ArrowRight className="w-4 h-4 ml-1 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
                             </span>
                             <button
                                 onClick={(e) => handleApply(e, job._id)}
                                 disabled={applying === job._id}
                                 className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
                             >
-                                {applying === job._id ? <Loader2 className="w-4 h-4 animate-spin"/> : 'Apply Now'}
+                                {applying === job._id ? <Loader2 className="w-4 h-4 animate-spin"/> : t('findWork.applyNow')}
                             </button>
                         </div>
                     </motion.div>
