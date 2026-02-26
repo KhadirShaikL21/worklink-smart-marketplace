@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext.jsx';
-import { User, Phone, Mail, CheckCircle, XCircle, Camera, Shield, Loader2, AlertTriangle, MapPin, Briefcase, Star, Edit2, Save, X, Award, Clock, IndianRupee } from 'lucide-react';
+import { User, Phone, Mail, CheckCircle, XCircle, Camera, Shield, Loader2, AlertTriangle, MapPin, Briefcase, Star, Edit2, Save, X, Award, Clock, IndianRupee, CreditCard } from 'lucide-react';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -41,14 +41,23 @@ export default function Profile() {
         if (isOwnProfile) {
           if (currentUser) {
             setProfileUser(currentUser);
+            // Ensure bankDetails is properly initialized
+            const defaultBankDetails = {
+              accountHolderName: '',
+              accountNumber: '',
+              bankName: '',
+              ifscCode: '',
+              upiId: ''
+            };
             setEditForm({
-              name: currentUser.name,
-              phone: currentUser.phone,
+              name: currentUser.name || '',
+              phone: currentUser.phone || '',
               title: currentUser.workerProfile?.title || '',
               bio: currentUser.workerProfile?.bio || '',
               hourlyRate: currentUser.workerProfile?.hourlyRate || '',
               skills: currentUser.workerProfile?.skills?.join(', ') || '',
-              experienceYears: currentUser.workerProfile?.experienceYears || ''
+              experienceYears: currentUser.workerProfile?.experienceYears || '',
+              bankDetails: { ...defaultBankDetails, ...(currentUser.bankDetails || {}) }
             });
           }
         } else {
@@ -81,16 +90,23 @@ export default function Profile() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.patch('/api/auth/me', {
+      const response = await api.patch('/api/auth/me', {
         name: editForm.name,
         phone: editForm.phone,
         title: editForm.title,
         bio: editForm.bio,
         hourlyRate: editForm.hourlyRate,
         experienceYears: editForm.experienceYears,
-        skills: editForm.skills
+        skills: editForm.skills,
+        bankDetails: editForm.bankDetails
       });
 
+      // Update profile user with the response data
+      if (response.data && response.data.user) {
+        setProfileUser(response.data.user);
+      }
+      
+      // Also refresh the auth context
       await refreshUser();
       setIsEditing(false);
       toast.success('Profile updated successfully!');
@@ -351,6 +367,67 @@ export default function Profile() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Payment Details (For Workers Only) */}
+                        {isWorker && (
+                        <div className="space-y-4 md:col-span-2 border-t border-gray-100 pt-6">
+                            <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                                <IndianRupee className="w-4 h-4" /> {t('profile.paymentDetails') || 'Payment Details'}
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('wallet.accountHolderName') || 'Account Name'}</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.bankDetails?.accountHolderName || ''}
+                                        onChange={e => setEditForm({...editForm, bankDetails: {...editForm.bankDetails, accountHolderName: e.target.value}})}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all bg-gray-50/50"
+                                        placeholder="Name on Bank Account"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('wallet.bankName') || 'Bank Name'}</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.bankDetails?.bankName || ''}
+                                        onChange={e => setEditForm({...editForm, bankDetails: {...editForm.bankDetails, bankName: e.target.value}})}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all bg-gray-50/50"
+                                        placeholder="Bank Name"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('wallet.accountNumber') || 'Account Number'}</label>
+                                    <input
+                                        type="password"
+                                        value={editForm.bankDetails?.accountNumber || ''}
+                                        onChange={e => setEditForm({...editForm, bankDetails: {...editForm.bankDetails, accountNumber: e.target.value}})}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all bg-gray-50/50"
+                                        placeholder="************"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('wallet.ifscCode') || 'IFSC Code'}</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.bankDetails?.ifscCode || ''}
+                                        onChange={e => setEditForm({...editForm, bankDetails: {...editForm.bankDetails, ifscCode: e.target.value}})}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all bg-gray-50/50"
+                                        placeholder="SBIN0001234"
+                                    />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t('wallet.upiId') || 'UPI ID'}</label>
+                                    <input
+                                        type="text"
+                                        value={editForm.bankDetails?.upiId || ''}
+                                        onChange={e => setEditForm({...editForm, bankDetails: {...editForm.bankDetails, upiId: e.target.value}})}
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all bg-gray-50/50"
+                                        placeholder="username@upi"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                        )}
                     </div>
 
                         {isWorker ? (
@@ -599,6 +676,45 @@ export default function Profile() {
                         )}
                       </div>
                     </div>
+
+                    {/* Bank & UPI Details (Workers Only) */}
+                    {isWorker && (
+                    <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                         <CreditCard className="w-5 h-5 text-primary-600" /> {t('profile.paymentDetails')}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">{t('profile.bank.accountNumber')}</p>
+                            <p className="font-mono text-gray-900 font-medium text-lg truncate">
+                               {user.bankDetails?.accountNumber ? 
+                                 (user.bankDetails.accountNumber.length > 4 ? 
+                                   '•••• •••• ' + user.bankDetails.accountNumber.slice(-4) : 
+                                   user.bankDetails.accountNumber
+                                 ) 
+                                 : <span className="text-gray-400 italic text-sm">{t('profile.notProvided')}</span>}
+                            </p>
+                         </div>
+                         <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">{t('profile.bank.ifsc')}</p>
+                            <p className="font-mono text-gray-900 font-medium text-lg uppercase">
+                               {user.bankDetails?.ifscCode || <span className="text-gray-400 italic text-sm">{t('profile.notProvided')}</span>}
+                            </p>
+                         </div>
+                         <div className="md:col-span-2 p-4 bg-primary-50 rounded-2xl border border-primary-100 flex items-center justify-between">
+                            <div>
+                                <p className="text-xs text-primary-400 font-bold uppercase tracking-wider mb-1">{t('profile.bank.upiId')}</p>
+                                <p className="font-medium text-primary-900 text-lg">
+                                {user.bankDetails?.upiId || <span className="text-primary-300 italic text-sm">{t('profile.notProvided')}</span>}
+                                </p>
+                            </div>
+                            <div className="bg-white p-2 rounded-lg shadow-sm">
+                                <span className="text-xs font-bold text-gray-500">UPI</span>
+                            </div>
+                         </div>
+                      </div>
+                    </div>
+                    )}
 
                     {/* Reviews */}
                     <div className="bg-white p-8 rounded-3xl border border-gray-200 shadow-sm">

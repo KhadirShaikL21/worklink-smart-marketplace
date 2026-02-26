@@ -183,8 +183,20 @@ export async function refresh(req, res) {
 }
 
 export async function me(req, res) {
-  const profile = await WorkerProfile.findOne({ user: req.user._id }).select('avatarUrl title skills experienceYears hourlyRate');
+  const profile = await WorkerProfile.findOne({ user: req.user._id }).select('avatarUrl title skills experienceYears hourlyRate bio isAvailable completedJobs badges ratingStats');
   const user = req.user.toObject();
+  
+  // Ensure bankDetails is included
+  if (!user.bankDetails) {
+    user.bankDetails = {
+      accountHolderName: '',
+      accountNumber: '',
+      bankName: '',
+      ifscCode: '',
+      upiId: ''
+    };
+  }
+  
   if (profile) {
     if (!user.avatarUrl && profile.avatarUrl) user.avatarUrl = profile.avatarUrl;
     user.workerProfile = {
@@ -192,7 +204,12 @@ export async function me(req, res) {
       skills: profile.skills,
       experienceYears: profile.experienceYears,
       hourlyRate: profile.hourlyRate,
-      avatarUrl: profile.avatarUrl
+      avatarUrl: profile.avatarUrl,
+      bio: profile.bio,
+      isAvailable: profile.isAvailable,
+      completedJobs: profile.completedJobs,
+      badges: profile.badges,
+      ratingStats: profile.ratingStats
     };
   }
   return res.json({ user });
@@ -209,14 +226,25 @@ export async function logout(req, res) {
 }
 
 export async function updateMe(req, res) {
-  const { name, phone, avatarUrl, title, bio, skills, hourlyRate, experienceYears } = req.body;
+  const { name, phone, avatarUrl, title, bio, skills, hourlyRate, experienceYears, bankDetails } = req.body;
   
   const userUpdates = {};
   if (name) userUpdates.name = name;
   if (phone) userUpdates.phone = phone;
   if (avatarUrl) userUpdates.avatarUrl = avatarUrl;
+  if (bankDetails) {
+    // Merge bank details properly
+    const existingBankDetails = req.user.bankDetails || {};
+    userUpdates.bankDetails = {
+      accountHolderName: bankDetails.accountHolderName !== undefined ? bankDetails.accountHolderName : existingBankDetails.accountHolderName,
+      accountNumber: bankDetails.accountNumber !== undefined ? bankDetails.accountNumber : existingBankDetails.accountNumber,
+      bankName: bankDetails.bankName !== undefined ? bankDetails.bankName : existingBankDetails.bankName,
+      ifscCode: bankDetails.ifscCode !== undefined ? bankDetails.ifscCode : existingBankDetails.ifscCode,
+      upiId: bankDetails.upiId !== undefined ? bankDetails.upiId : existingBankDetails.upiId
+    };
+  }
   
-  const user = await User.findByIdAndUpdate(req.user._id, userUpdates, { new: true, runValidators: true });
+  const user = await User.findByIdAndUpdate(req.user._id, { $set: userUpdates }, { new: true, runValidators: true });
   
   if (user.roles.includes('worker')) {
     const workerUpdates = {};
@@ -229,7 +257,27 @@ export async function updateMe(req, res) {
     await WorkerProfile.findOneAndUpdate({ user: user._id }, workerUpdates, { upsert: true });
   }
   
-  return res.json({ user });
+  // Fetch complete user data with workerProfile for response
+  const profile = await WorkerProfile.findOne({ user: user._id }).select('avatarUrl title skills experienceYears hourlyRate bio isAvailable completedJobs badges ratingStats');
+  const userObj = user.toObject();
+  
+  if (profile) {
+    if (!userObj.avatarUrl && profile.avatarUrl) userObj.avatarUrl = profile.avatarUrl;
+    userObj.workerProfile = {
+      title: profile.title,
+      skills: profile.skills,
+      experienceYears: profile.experienceYears,
+      hourlyRate: profile.hourlyRate,
+      avatarUrl: profile.avatarUrl,
+      bio: profile.bio,
+      isAvailable: profile.isAvailable,
+      completedJobs: profile.completedJobs,
+      badges: profile.badges,
+      ratingStats: profile.ratingStats
+    };
+  }
+  
+  return res.json({ user: userObj });
 }
 
 // Placeholder for OTP flow to be implemented with provider

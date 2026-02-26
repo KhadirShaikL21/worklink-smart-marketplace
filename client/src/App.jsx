@@ -18,6 +18,7 @@ import VerifyEmail from './pages/VerifyEmail.jsx';
 import FindWork from './pages/FindWork.jsx';
 import MyDisputes from './pages/MyDisputes.jsx';
 import HelpCenter from './pages/HelpCenter.jsx';
+import WalletPage from './pages/WalletPage.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import AdminUsers from './pages/AdminUsers.jsx';
@@ -47,6 +48,15 @@ function AdminRoute({ children }) {
   return children;
 }
 
+function WorkerRoute({ children }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>;
+  if (!user || !user.roles.includes('worker')) {
+    return <Navigate to="/jobs" replace />;
+  }
+  return children;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -62,6 +72,7 @@ export default function App() {
         <Route path="jobs/:jobId/matching" element={<Protected><Matching /></Protected>} />
         <Route path="find-work" element={<Protected><FindWork /></Protected>} />
         <Route path="worker-jobs" element={<Protected><WorkerJobs /></Protected>} />
+        <Route path="wallet" element={<WorkerRoute><WalletPage /></WorkerRoute>} />
         <Route path="help" element={<HelpCenter />} />
         <Route path="my-disputes" element={<Protected><MyDisputes /></Protected>} />
         <Route path="notifications" element={<Protected><Notifications /></Protected>} />

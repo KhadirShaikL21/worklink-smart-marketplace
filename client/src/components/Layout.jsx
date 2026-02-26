@@ -9,7 +9,7 @@ import { AnimatePresence } from 'framer-motion';
 import PageTransition from './ui/PageTransition.jsx';
 import { 
   Menu, X, Bell, MessageSquare, User, Users, Briefcase, 
-  Home, LogOut, Search, Sparkles, HelpCircle, PhoneIncoming, PhoneOff, AlertTriangle
+  Home, LogOut, Search, Sparkles, HelpCircle, PhoneIncoming, PhoneOff, AlertTriangle, Wallet
 } from 'lucide-react';
 import clsx from 'clsx';
 import { Toaster, toast } from 'react-hot-toast';
@@ -81,16 +81,18 @@ export default function Layout() {
   if (user) {
     if (user.roles?.includes('customer')) {
         navigation.push({ name: 'My Jobs', href: '/jobs', icon: Briefcase });
+        // Only customers need the Job Posting AI Assistant
+        navigation.push({ name: 'AI Assistant', href: '/assistant', icon: Sparkles });
     }
     
     if (user.roles?.includes('worker')) {
         navigation.push({ name: 'My Work', href: '/worker-jobs', icon: Briefcase });
+        navigation.push({ name: 'Wallet', href: '/wallet', icon: Wallet });
     }
   }
 
   navigation.push(
       { name: 'Find Updates', href: '/workers', icon: Users },
-      { name: 'AI Assistant', href: '/assistant', icon: Sparkles },
       { name: 'Support', href: '/help', icon: HelpCircle }
   );
 

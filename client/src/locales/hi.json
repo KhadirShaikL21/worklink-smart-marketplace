@@ -26,6 +26,23 @@
     "step3Title": "काम और भुगतान",
     "step3Desc": "प्रगति ट्रैक करें, सुरक्षित रूप से चैट करें और केवल संतुष्ट होने पर भुगतान करें।"
   },
+  "wallet": {
+    "title": "मेरा वॉलेट",
+    "totalEarnings": "कुल कमाई",
+    "pendingPayouts": "लंबित भुगतान",
+    "released": "जारी किया गया",
+    "recentTransactions": "हाल के लेनदेन",
+    "noTransactions": "अभी तक कोई लेनदेन नहीं।",
+    "payoutSettings": "भुगतान सेटिंग्स",
+    "accountHolderName": "खाता धारक का नाम",
+    "bankName": "बैंक का नाम",
+    "accountNumber": "खाता संख्या",
+    "ifscCode": "IFSC कोड",
+    "upiId": "UPI आईडी",
+    "saveChanges": "परिवर्तन सहेजें",
+    "secureNote": "आपका बैंक विवरण सुरक्षित रूप से संग्रहीत है।",
+    "bankDetailsSaved": "बैंक विवरण सफलतापूर्वक सहेजा गया"
+  },
   "workers": {
     "title": "कामगार ढूंढें",
     "subtitle": "अपनी आवश्यकताओं के लिए कुशल पेशेवरों को ब्राउज़ करें",
@@ -260,6 +277,20 @@
     "videoNote": "वीडियो नोट (वैकल्पिक)",
     "publish": "नौकरी प्रकाशित करें",
     "publishing": "प्रकाशित हो रहा है..."
+  },
+  "profile": {
+    "editDetails": "प्रोफ़ाइल संपादित करें",
+    "updateInfo": "अपनी व्यक्तिगत जानकारी अपडेट करें",
+    "personalInfo": "व्यक्तिगत जानकारी",
+    "professionalInfo": "व्यावसायिक जानकारी",
+    "paymentDetails": "भुगतान विवरण",
+    "fullName": "पूरा नाम",
+    "phone": "फ़ोन नंबर",
+    "title": "व्यावसायिक शीर्षक",
+    "hourlyRate": "प्रति घंटा दर",
+    "experience": "अनुभव (वर्ष)",
+    "skills": "कौशल",
+    "bio": "बायो"
   },
   "jobDetail": {
     "status": "स्थिति",
