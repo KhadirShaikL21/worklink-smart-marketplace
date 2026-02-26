@@ -4,6 +4,7 @@ import { rankWorkersForJob } from '../services/matching.js';
 import { optimizeTeam } from '../services/team.js';
 import ChatRoom from '../models/ChatRoom.js';
 import { notify } from '../services/notifications.js';
+import { releasePayouts } from '../services/payments.js';
 
 import WorkerProfile from '../models/WorkerProfile.js';
 import Payment from '../models/Payment.js';
@@ -574,13 +575,46 @@ export async function completeJob(req, res) {
   };
   await job.save();
 
-  // Set workers back to available
+  // Set workers back to available and increment completed jobs
   if (job.assignedWorkers && job.assignedWorkers.length > 0) {
     const workerIds = job.assignedWorkers.map(w => w._id || w);
     await WorkerProfile.updateMany(
       { user: { $in: workerIds } },
-      { $set: { isAvailable: true } }
+      { $inc: { completedJobs: 1 }, $set: { isAvailable: true } }
     );
+  }
+
+  // Ensure payment record exists and payouts are released
+  try {
+    let payment = await Payment.findOne({ job: job._id });
+    if (!payment && job.assignedWorkers && job.assignedWorkers.length > 0) {
+      const totalAmount = job.budget?.max || job.budget?.min || 500;
+      const platformFeePct = 5;
+      const platformFee = (totalAmount * platformFeePct) / 100;
+      const netToWorkers = totalAmount - platformFee;
+      const amountPerWorker = Math.floor(netToWorkers / job.assignedWorkers.length);
+
+      const payees = job.assignedWorkers.map(workerId => ({
+        worker: workerId,
+        amount: amountPerWorker,
+        status: 'released'
+      }));
+
+      payment = await Payment.create({
+        job: job._id,
+        payer: job.customer,
+        payees,
+        platformFeePct,
+        total: totalAmount,
+        currency: 'INR',
+        status: 'captured',
+        stripePaymentIntentId: `offline_${job._id}_${Date.now()}`
+      });
+    } else if (payment) {
+      await releasePayouts(payment._id);
+    }
+  } catch (error) {
+    console.error('Error creating/releasing payout on job completion:', error);
   }
 
   // Notify Customer

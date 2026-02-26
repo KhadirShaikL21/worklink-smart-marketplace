@@ -14,12 +14,36 @@ export default function AssistantWidget() {
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const messagesEndRef = useRef(null);
 
   const isWorker = user?.roles?.includes('worker');
   const roleTitle = isWorker ? 'Partner Support' : 'Customer Support';
   
-  // Initial greeting
+  // Track current user and clear messages when user changes
+  useEffect(() => {
+    if (user?.id) {
+      // If user ID changed, clear all messages and conversation
+      if (currentUserId && currentUserId !== user.id) {
+        console.log('User switched, clearing conversation history');
+        setMessages([]);
+        setInput('');
+        setIsOpen(false);
+      }
+      setCurrentUserId(user.id);
+    }
+  }, [user?.id, currentUserId]);
+
+  // Clear messages when chat is closed
+  useEffect(() => {
+    if (!isOpen) {
+      // Optional: clear messages when closing chat for privacy
+      // Uncomment the line below if you want to clear history on close
+      // setMessages([]);
+    }
+  }, [isOpen]);
+
+  // Initial greeting when opening chat
   useEffect(() => {
     if (messages.length === 0 && isOpen) {
        const initialMsg = isWorker 
@@ -30,7 +54,7 @@ export default function AssistantWidget() {
          content: initialMsg
        }]);
     }
-  }, [isOpen, isWorker]);
+  }, [isOpen, isWorker, messages.length]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

@@ -33,6 +33,17 @@ const RatingStatsSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const BankDetailsSchema = new mongoose.Schema(
+  {
+    accountHolderName: { type: String, default: '', trim: true },
+    accountNumber: { type: String, default: '', trim: true },
+    bankName: { type: String, default: '', trim: true },
+    ifscCode: { type: String, default: '', trim: true },
+    upiId: { type: String, default: '', trim: true }
+  },
+  { _id: false }
+);
+
 const UserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true, maxlength: 120 },
@@ -44,6 +55,7 @@ const UserSchema = new mongoose.Schema(
     blockedReason: { type: String },
     isWorker: { type: Boolean, default: false },
     isCustomer: { type: Boolean, default: true },
+    bankDetails: { type: BankDetailsSchema, default: () => ({}) },
     verification: { type: VerificationSchema, default: () => ({}) },
     otp: { type: OtpSchema, default: undefined },
     ratingStats: { type: RatingStatsSchema, default: () => ({}) },
