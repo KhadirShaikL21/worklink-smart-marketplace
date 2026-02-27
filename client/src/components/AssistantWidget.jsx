@@ -19,41 +19,40 @@ export default function AssistantWidget() {
 
   const isWorker = user?.roles?.includes('worker');
   const roleTitle = isWorker ? 'Partner Support' : 'Customer Support';
-  const resolvedUserId = user?._id || user?.id || null;
-
-  // Clear conversation when user changes or logs out
+  
+  // Track current user and clear messages when user changes
   useEffect(() => {
-    if (!resolvedUserId) {
-      if (currentUserId) {
+    if (user?.id) {
+      // If user ID changed, clear all messages and conversation
+      if (currentUserId && currentUserId !== user.id) {
+        console.log('User switched, clearing conversation history');
         setMessages([]);
         setInput('');
         setIsOpen(false);
       }
-      setCurrentUserId(null);
-      return;
+      setCurrentUserId(user.id);
     }
+  }, [user?.id, currentUserId]);
 
-    if (currentUserId && currentUserId !== resolvedUserId) {
-      setMessages([]);
-      setInput('');
-      setIsOpen(false);
+  // Clear messages when chat is closed
+  useEffect(() => {
+    if (!isOpen) {
+      // Optional: clear messages when closing chat for privacy
+      // Uncomment the line below if you want to clear history on close
+      // setMessages([]);
     }
+  }, [isOpen]);
 
-    setCurrentUserId(resolvedUserId);
-  }, [resolvedUserId, currentUserId]);
-
-  // Initial greeting
+  // Initial greeting when opening chat
   useEffect(() => {
     if (messages.length === 0 && isOpen) {
-      const initialMsg = isWorker
-        ? 'Namaste! I am your Partner Assistant. Ask me about jobs, payments, or safety.'
-        : 'Hello! I am your WorkLink Assistant. How can I help you post a job or find a worker?';
-      setMessages([
-        {
-          role: 'assistant',
-          content: initialMsg
-        }
-      ]);
+       const initialMsg = isWorker 
+           ? 'Namaste! I am your Partner Assistant. Ask me about jobs, payments, or safety.'
+           : 'Hello! I am your WorkLink Assistant. How can I help you post a job or find a worker?';
+       setMessages([{
+         role: 'assistant',
+         content: initialMsg
+       }]);
     }
   }, [isOpen, isWorker, messages.length]);
 

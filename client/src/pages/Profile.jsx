@@ -41,23 +41,15 @@ export default function Profile() {
         if (isOwnProfile) {
           if (currentUser) {
             setProfileUser(currentUser);
-            // Ensure bankDetails is properly initialized
-            const defaultBankDetails = {
-              accountHolderName: '',
-              accountNumber: '',
-              bankName: '',
-              ifscCode: '',
-              upiId: ''
-            };
             setEditForm({
-              name: currentUser.name || '',
-              phone: currentUser.phone || '',
+              name: currentUser.name,
+              phone: currentUser.phone,
               title: currentUser.workerProfile?.title || '',
               bio: currentUser.workerProfile?.bio || '',
               hourlyRate: currentUser.workerProfile?.hourlyRate || '',
               skills: currentUser.workerProfile?.skills?.join(', ') || '',
               experienceYears: currentUser.workerProfile?.experienceYears || '',
-              bankDetails: { ...defaultBankDetails, ...(currentUser.bankDetails || {}) }
+              bankDetails: currentUser.bankDetails || {}
             });
           }
         } else {
@@ -90,7 +82,7 @@ export default function Profile() {
     e.preventDefault();
     setSaving(true);
     try {
-      const response = await api.patch('/api/auth/me', {
+      await api.patch('/api/auth/me', {
         name: editForm.name,
         phone: editForm.phone,
         title: editForm.title,
@@ -101,12 +93,6 @@ export default function Profile() {
         bankDetails: editForm.bankDetails
       });
 
-      // Update profile user with the response data
-      if (response.data && response.data.user) {
-        setProfileUser(response.data.user);
-      }
-      
-      // Also refresh the auth context
       await refreshUser();
       setIsEditing(false);
       toast.success('Profile updated successfully!');

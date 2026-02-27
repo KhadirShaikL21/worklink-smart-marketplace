@@ -76,63 +76,35 @@ export async function customerSatisfaction(req, res) {
       }
 
       // Handle Payment and Payout
-      let payment = await Payment.findOne({ job: jobId });
-      
-      // If no payment exists, create one for completed work
-      if (!payment && job.assignedWorkers && job.assignedWorkers.length > 0) {
-        console.log('No payment found for completed job, creating one:', jobId);
-        
-        const totalAmount = job.budget?.max || job.budget?.min || 500; // Default fallback
-        const platformFeePct = 5;
-        const platformFee = (totalAmount * platformFeePct) / 100;
-        const netToWorkers = totalAmount - platformFee;
-        const amountPerWorker = Math.floor(netToWorkers / job.assignedWorkers.length);
-        
-        const payees = job.assignedWorkers.map(workerId => ({
-          worker: workerId,
-          amount: amountPerWorker,
-          status: 'released' // Immediately mark as released since work is done
-        }));
-        
-        payment = await Payment.create({
-          job: jobId,
-          payer: job.customer,
-          payees: payees,
-          platformFeePct: platformFeePct,
-          total: totalAmount,
-          currency: 'INR',
-          status: 'captured', // Mark as captured since work is completed
-          stripePaymentIntentId: `offline_${jobId}_${Date.now()}` // Mark as offline payment
-        });
-        
-        console.log('Payment created for completed job:', payment._id);
-      } else if (payment) {
-        // Existing payment flow
+      const payment = await Payment.findOne({ job: jobId });
+      if (payment) {
         console.log('Payment found, releasing payouts for job:', jobId);
         await releasePayouts(payment._id);
-      }
-      
-      // Notify all workers that payment has been released
-      if (payment && payment.payees && payment.payees.length > 0) {
-        for (const payee of payment.payees) {
-          if (payee.status === 'released' && payee.worker) {
-            try {
-              const worker = await User.findById(payee.worker);
-              if (worker && worker.email) {
-                await notify({
-                  userId: payee.worker,
-                  type: 'job_completed_paid',
-                  title: 'Job Completed & Payment Released',
-                  body: `Congratulations! Your job "${job.title}" has been completed and ₹${payee.amount} has been credited to your account.`,
-                  link: `/worker-jobs/${jobId}`,
-                  metadata: { jobId, paymentId: payment._id, amount: payee.amount }
-                });
+        
+        // Notify all workers that payment has been released
+        if (payment.payees && payment.payees.length > 0) {
+          for (const payee of payment.payees) {
+            if (payee.status === 'released' && payee.worker) {
+              try {
+                const worker = await User.findById(payee.worker);
+                if (worker && worker.email) {
+                  await notify({
+                    userId: payee.worker,
+                    type: 'job_completed_paid',
+                    title: 'Job Completed & Payment Released',
+                    body: `Congratulations! Your job "${job.title}" has been completed and ₹${payee.amount} has been credited to your account.`,
+                    link: `/worker-jobs/${jobId}`,
+                    metadata: { jobId, paymentId: payment._id, amount: payee.amount }
+                  });
+                }
+              } catch (e) {
+                console.error('Error notifying worker:', e);
               }
-            } catch (e) {
-              console.error('Error notifying worker:', e);
             }
           }
         }
+      } else {
+        console.log('No payment found for job:', jobId);
       }
     } else if (status === 'not_satisfied') {
       // Refund payment
