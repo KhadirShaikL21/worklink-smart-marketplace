@@ -38,8 +38,7 @@ export default function AssistantWidget() {
   useEffect(() => {
     if (!isOpen) {
       // Optional: clear messages when closing chat for privacy
-      // Uncomment the line below if you want to clear history on close
-      // setMessages([]);
+      setMessages([]);
     }
   }, [isOpen]);
 

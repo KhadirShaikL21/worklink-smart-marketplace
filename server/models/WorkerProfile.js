@@ -71,6 +71,7 @@ const WorkerProfileSchema = new mongoose.Schema(
       count: { type: Number, default: 0 },
       lastUpdated: { type: Date }
     },
+    walletBalance: { type: Number, default: 0 },
     completedJobs: { type: Number, default: 0 },
     successRate: { type: Number, default: 1.0, min: 0, max: 1 },
     verificationScore: { type: Number, default: 0 }

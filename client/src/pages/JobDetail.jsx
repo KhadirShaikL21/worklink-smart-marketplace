@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../context/SocketContext';
 import { 
   MapPin, Clock, IndianRupee, CheckCircle, AlertTriangle, User, Briefcase, 
   Lock, Video, Image as ImageIcon, Loader2, Navigation, MessageSquare, 
@@ -15,9 +16,14 @@ import DisputeResolutionModal from '../components/DisputeResolutionModal';
 import JobTrackingMap from '../components/JobTrackingMap';
 import { JobDetailSkeleton } from '../components/ui/Skeleton';
 
+const HammerIcon = ({ className }) => (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9"/><path d="M17.64 15 22 10.64"/><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.25V7.86c0-.55-.45-1-1-1H16.4c-.84 0-1.65-.33-2.25-.93L12.9 4.68c-.6-.6-1.4-.93-2.25-.93H4.86c-.55 0-1 .45-1 1v6.78c0 .84.33 1.65.93 2.25L12 21"/></svg>
+  );
+
 export default function JobDetail() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { socket } = useSocket();
   const { jobId } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
@@ -38,8 +44,9 @@ export default function JobDetail() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [timeLeft, setTimeLeft] = useState(60);
   const [timerExpired, setTimerExpired] = useState(false);
+  const [showRatingModal, setShowRatingModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
-
+  
   // Derived state calculations need to be hoisted or safe-guarded
   const currentUserId = user?._id?.toString();
   const customerId = job && (job.customer?._id || job.customer)?.toString();
@@ -98,6 +105,31 @@ export default function JobDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
+  // Real-time updates listener
+  useEffect(() => {
+    if (!socket) return;
+    
+    // Listen for notification events that contain this jobId
+    const handleNotification = (data) => {
+        if (data && data.metadata && data.metadata.jobId === jobId) {
+            console.log('Realtime Job Update Triggered:', data);
+            load(); // Refresh job data
+        }
+    };
+
+    // The backend in realtime.js emits 'notification:new'
+    socket.on('notification:new', handleNotification);
+    
+    // Also listen for general job updates if broadcasted
+    // If your backend emits 'job_update' specifically:
+    socket.on('job_update', handleNotification);
+
+    return () => {
+      socket.off('notification:new', handleNotification);
+      socket.off('job_update', handleNotification);
+    };
+  }, [socket, jobId]);
+
   const markSatisfaction = async status => {
     try {
       await api.post(`/api/jobs/${jobId}/satisfaction`, { status });
@@ -145,8 +177,14 @@ export default function JobDetail() {
 
   const handlePaymentSuccess = async (paymentIntent) => {
       setShowPaymentModal(false);
-      setStatusMsg('Payment successful! Job marked as completed.');
-      setTimeout(() => load(), 1000); 
+      setStatusMsg('Payment successful! Please rate the worker.');
+      // Update local state without reload first
+      if (job) {
+          setJob(prev => ({ ...prev, status: 'completed', payment: { ...prev.payment, status: 'succeeded' } }));
+      }
+      setRating(prev => ({ ...prev, workerId: (job.assignedWorkers?.[0]?._id || job.assignedWorkers?.[0] || '').toString() }));
+      setShowRatingModal(true);
+      setTimeout(() => load(), 2000); 
   };
 
   const handleAcceptJob = async () => {
@@ -240,8 +278,13 @@ export default function JobDetail() {
       }
 
       await api.post(`/api/jobs/${jobId}/complete`, { videoUrl, imageUrls });
-      setStatusMsg('Job completed successfully! Waiting for customer payment.');
-      navigate(`/dashboard`); // Or maybe refresh current
+      setStatusMsg('Job submitted! Please rate the customer.');
+      // Show rating modal for worker immediately or wait?
+      // Usually payment comes first, but if flow is Worker -> Complete -> Rate Customer -> Wait Payment?
+      // Or Worker -> Complete -> Customer Pays -> Worker receives Notif -> Rate Customer?
+      // Let's assume Worker can rate Customer immediately upon completion for UX simplicity.
+      setRating(prev => ({ ...prev, workerId: customerId })); // Prepare to rate customer
+      setShowRatingModal(true); 
       load();
     } catch (err) {
       console.error(err)
@@ -303,12 +346,22 @@ export default function JobDetail() {
         return (acc || 0) + minutes;
       }, null));
 
+
+
+// Helper components
+const HammerIcon = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9"/><path d="M17.64 15 22 10.64"/><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.25V7.86c0-.55-.45-1-1-1H16.4c-.84 0-1.65-.33-2.25-.93L12.9 4.68c-.6-.6-1.4-.93-2.25-.93H4.86c-.55 0-1 .45-1 1v6.78c0 .84.33 1.65.93 2.25L12 21"/></svg>
+);
+
+
+
   const StatusBadge = ({ status }) => {
     const config = {
       open: { bg: 'bg-blue-50', text: 'text-blue-700', icon: Briefcase },
       assigned: { bg: 'bg-yellow-50', text: 'text-yellow-700', icon: Clock },
       accepted: { bg: 'bg-purple-50', text: 'text-purple-700', icon:CheckCircle },
       en_route: { bg: 'bg-indigo-50', text: 'text-indigo-700', icon: Navigation },
+      arrived: { bg: 'bg-indigo-100', text: 'text-indigo-800', icon: MapPin },
       in_progress: { bg: 'bg-orange-50', text: 'text-orange-700', icon: HammerIcon },
       completed: { bg: 'bg-green-50', text: 'text-green-700', icon: CheckCircle },
       cancelled: { bg: 'bg-red-50', text: 'text-red-700', icon: ShieldAlert },
@@ -323,11 +376,6 @@ export default function JobDetail() {
       </span>
     );
   };
-
-// Replace HammerIcon which was possibly undefined
-const HammerIcon = ({ className }) => (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 12-8.5 8.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L12 9"/><path d="M17.64 15 22 10.64"/><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.25V7.86c0-.55-.45-1-1-1H16.4c-.84 0-1.65-.33-2.25-.93L12.9 4.68c-.6-.6-1.4-.93-2.25-.93H4.86c-.55 0-1 .45-1 1v6.78c0 .84.33 1.65.93 2.25L12 21"/></svg>
-  );
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
@@ -346,6 +394,15 @@ const HammerIcon = ({ className }) => (
           job={job}
         />
       )}
+
+      <RatingModal 
+        isOpen={showRatingModal} 
+        onClose={() => setShowRatingModal(false)}
+        onSubmit={submitRating}
+        rating={rating}
+        setRating={setRating}
+        isWorkerRatingCustomer={jobRole === 'worker'}
+      />
 
       <DisputeResolutionModal 
         isOpen={showDisputeModal} 
@@ -502,6 +559,25 @@ const HammerIcon = ({ className }) => (
                                          {t('jobDetail.uploadProof')}
                                      </div>
                                      <form onSubmit={handleCompleteJob}>
+                                         {/* Video Upload Section */}
+                                         <div className="mb-4">
+                                            <label className={clsx("w-full aspect-video rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors relative overflow-hidden", videoFile ? "border-green-500 bg-green-50" : "border-gray-300 hover:border-sidebar-primary/50 hover:bg-gray-50")}>
+                                                {videoFile ? (
+                                                    <div className="text-center">
+                                                        <Video className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                                                        <span className="text-sm font-medium text-green-700">{videoFile.name} (Ready to upload)</span>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <Video className="w-8 h-8 text-gray-400 mb-2" />
+                                                        <span className="text-sm font-medium text-gray-700">Upload Work Video (Required)</span>
+                                                        <span className="text-xs text-gray-500 mt-1">MP4/WebM recommended</span>
+                                                    </>
+                                                )}
+                                                <input type="file" accept="video/*" className="hidden" onChange={e => setVideoFile(e.target.files[0])} required />
+                                            </label>
+                                         </div>
+
                                          <div className="grid grid-cols-3 gap-4 mb-6">
                                              {[0, 1, 2].map(idx => (
                                                  <label key={idx} className={clsx("aspect-square rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors relative overflow-hidden", photoFiles[idx] ? "border-green-500 bg-green-50" : "border-gray-300 hover:border-sidebar-primary/50 hover:bg-gray-50")}>
@@ -537,7 +613,7 @@ const HammerIcon = ({ className }) => (
                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
                          <h3 className="font-semibold text-gray-900 border-b border-gray-100 pb-3">{t('jobDetail.actions')}</h3>
                          
-                         {job.status === 'open' && assignedWorkers.length === 0 && (
+                         {job.status === 'open' && (!assignedWorkers || assignedWorkers.length === 0) && (
                              <button onClick={() => navigate(`/jobs/${jobId}/matching`)} className="w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 shadow-md flex items-center justify-center gap-2">
                                  <User className="w-5 h-5" /> {t('jobDetail.findWorkers')}
                              </button>
@@ -548,7 +624,7 @@ const HammerIcon = ({ className }) => (
                             <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex items-center justify-between">
                                 <div>
                                     <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">{t('jobDetail.startCode')}</span>
-                                    <div className="text-2xl font-mono font-bold text-indigo-900 mt-1">{job.otp || '****'}</div>
+                                    <div className="text-2xl font-mono font-bold text-indigo-900 mt-1">{job.startOtp || job.otp || '****'}</div>
                                     <p className="text-xs text-indigo-700 mt-1">{t('jobDetail.shareOtp')}</p>
                                 </div>
                                 <ShieldAlert className="w-8 h-8 text-indigo-300" />
@@ -751,6 +827,71 @@ const InvoiceModal = ({ isOpen, onClose, payment, job }) => {
                         {t('invoice.close')}
                     </button>
                 </div>
+            </motion.div>
+        </div>
+    );
+};
+
+const RatingModal = ({ isOpen, onClose, onSubmit, rating, setRating, isWorkerRatingCustomer }) => {
+    const { t } = useTranslation();
+    if (!isOpen) return null;
+
+    return (
+        <div className='fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm'>
+            <motion.div 
+               initial={{ opacity: 0, scale: 0.9 }} 
+               animate={{ opacity: 1, scale: 1 }}
+               className='bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden'
+            >
+                <div className='p-6 border-b border-gray-100 flex justify-between items-center'>
+                    <h3 className='text-xl font-bold text-gray-900'>
+                        {isWorkerRatingCustomer ? 'Rate Customer' : t('jobDetail.rateWorker')}
+                    </h3>
+                    <button onClick={onClose}><X className='w-5 h-5 text-gray-400 hover:text-gray-600'/></button>
+                </div>
+                <form onSubmit={onSubmit} className='p-6 space-y-6'>
+                    <div className='space-y-4'>
+                        {[
+                            { id: 'punctuality', label: t('jobDetail.punctuality'), icon: Clock },
+                            { id: 'quality', label: isWorkerRatingCustomer ? 'Communication' : t('jobDetail.quality'), icon: CheckCircle },
+                            { id: 'professionalism', label: t('jobDetail.professionalism'), icon: User }
+                        ].map((field) => (
+                            <div key={field.id} className='flex items-center justify-between'>
+                                <div className='flex items-center gap-2 text-gray-700 font-medium'>
+                                    <field.icon className='w-4 h-4 text-gray-400' />
+                                    {field.label}
+                                </div>
+                                <div className='flex gap-1'>
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            type='button'
+                                            onClick={() => setRating(prev => ({ ...prev, [field.id]: star }))}
+                                            className={clsx('transition-transform hover:scale-110', star <= rating[field.id] ? 'text-yellow-400 fill-current' : 'text-gray-300')}
+                                        >
+                                            <Star className='w-6 h-6 fill-current' />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    
+                    <div>
+                        <label className='block text-sm font-medium text-gray-700 mb-2'>{t('jobDetail.leaveReview')}</label>
+                        <textarea
+                            value={rating.review}
+                            onChange={e => setRating(prev => ({ ...prev, review: e.target.value }))}
+                            className='w-full rounded-xl border-gray-200 focus:ring-primary-500 focus:border-primary-500'
+                            rows={3}
+                            placeholder={t('jobDetail.reviewPlaceholder')}
+                        />
+                    </div>
+
+                    <button type='submit' className='w-full py-3 bg-primary-600 text-white font-bold rounded-xl hover:bg-primary-700 shadow-lg shadow-primary-600/20'>
+                        {t('jobDetail.submitRating')}
+                    </button>
+                </form>
             </motion.div>
         </div>
     );

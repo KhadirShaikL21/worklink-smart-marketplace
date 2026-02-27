@@ -1,6 +1,7 @@
 import { createPaymentIntent, markCaptured, releasePayouts, refundPayment } from '../services/payments.js';
 import Payment from '../models/Payment.js';
 import Job from '../models/Job.js';
+import mongoose from 'mongoose';
 
 export async function createIntent(req, res) {
   const { jobId, total, currency = 'INR', payees = [], platformFeePct = 5 } = req.body;
@@ -40,22 +41,33 @@ export async function refund(req, res) {
   }
 }
 
+import WorkerProfile from '../models/WorkerProfile.js';
+
 export async function getWorkerStats(req, res) {
   try {
     // Ensure only workers can access their stats
+    // ... existing checks ...
     if (!req.user.roles.includes('worker')) {
       return res.status(403).json({ message: 'Only workers can access wallet stats' });
     }
 
     const userId = req.user._id;
+
+    // Get current wallet balance from profile
+    const workerProfile = await WorkerProfile.findOne({ user: userId });
+    const currentBalance = workerProfile ? workerProfile.walletBalance : 0;
     
     const stats = await Payment.aggregate([
-      { $match: { 'payees.worker': userId } },
+      // First match payments involving this worker
+      { $match: { 'payees.worker': new mongoose.Types.ObjectId(userId) } },
+      // Unwind payees array to process individual entries
       { $unwind: '$payees' },
-      { $match: { 'payees.worker': userId } },
+      // Filter for only this worker's entry
+      { $match: { 'payees.worker': new mongoose.Types.ObjectId(userId) } },
+      // Group by status
       {
         $group: {
-          _id: '$payees.status',
+          _id: '$payees.status', // 'pending', 'released', 'failed'
           totalAmount: { $sum: '$payees.amount' },
           count: { $sum: 1 }
         }
@@ -69,12 +81,14 @@ export async function getWorkerStats(req, res) {
       total: 0
     };
 
+    // Populate earnings object
     stats.forEach(s => {
-      if (earnings[s._id] !== undefined) {
+      if (s._id && earnings.hasOwnProperty(s._id)) {
         earnings[s._id] = s.totalAmount;
       }
-      earnings.total += s.totalAmount;
     });
+    
+    earnings.total = earnings.released + earnings.pending;
 
     // Get recent transactions
     const transactions = await Payment.find({ 'payees.worker': userId })
@@ -96,7 +110,7 @@ export async function getWorkerStats(req, res) {
       };
     });
 
-    return res.json({ stats: earnings, recentTransactions: formattedTransactions });
+    return res.json({ stats: { ...earnings, currentBalance }, recentTransactions: formattedTransactions });
   } catch (error) {
     console.error('Error fetching worker stats:', error);
     return res.status(500).json({ message: 'Failed to fetch wallet stats' });

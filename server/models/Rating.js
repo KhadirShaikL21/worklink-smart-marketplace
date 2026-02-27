@@ -11,6 +11,7 @@ const RatingSchema = new mongoose.Schema(
     professionalism: { type: Number, min: 1, max: 5, required: true },
     review: { type: String, maxlength: 1200 },
     overall: { type: Number, min: 1, max: 5, required: true },
+    raterRole: { type: String, enum: ['customer', 'worker'], default: 'customer' },
     createdFrom: { type: String, enum: ['completion', 'admin'], default: 'completion' }
   },
   { timestamps: true }

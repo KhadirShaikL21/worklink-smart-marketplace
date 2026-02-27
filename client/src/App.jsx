@@ -72,6 +72,7 @@ export default function App() {
         <Route path="jobs/:jobId/matching" element={<Protected><Matching /></Protected>} />
         <Route path="find-work" element={<Protected><FindWork /></Protected>} />
         <Route path="worker-jobs" element={<Protected><WorkerJobs /></Protected>} />
+        <Route path="worker-jobs/:jobId" element={<Protected><JobDetail /></Protected>} />
         <Route path="wallet" element={<WorkerRoute><WalletPage /></WorkerRoute>} />
         <Route path="help" element={<HelpCenter />} />
         <Route path="my-disputes" element={<Protected><MyDisputes /></Protected>} />

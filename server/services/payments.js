@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import dotenv from 'dotenv';
 import { sendEmail } from './email.js';
 import { notify } from './notifications.js';
+import WorkerProfile from '../models/WorkerProfile.js';
 
 dotenv.config();
 
@@ -64,6 +65,20 @@ export async function markCaptured(paymentId) {
     .populate('payees.worker');
     
   if (payment) {
+    // Add funds towards Wallet Balance immediately upon capture (even if status is pending/released technically)
+    // The user requested: "payment is initiated add balance to payout...it has to added even it is pending"
+    // Since 'captured' means the customer paid, we can consider this "initiated" from the worker's perspective of receiving.
+    
+    for (const payee of payment.payees) {
+        if (payee.worker) {
+            // Update wallet balance immediately
+             await WorkerProfile.updateOne(
+                { user: payee.worker._id },
+                { $inc: { walletBalance: payee.amount } }
+             );
+        }
+    }
+
     // Send Receipt to Customer
     if (payment.payer && payment.payer.email) {
       // In-App Notification
@@ -122,12 +137,24 @@ export async function markCaptured(paymentId) {
   return payment;
 }
 
+
 export async function releasePayouts(paymentId) {
   const payment = await Payment.findById(paymentId);
   if (!payment) throw new Error('Payment not found');
 
-  // Stub: in real integration, trigger transfers. Here we mark released.
-  payment.payees = payment.payees.map(p => ({ ...p, status: 'released' }));
+  // Process each payee
+  for (let i = 0; i < payment.payees.length; i++) {
+    const payee = payment.payees[i];
+    if (payee.status !== 'released') {
+      // Wallet balance already updated during capture, so we just update status here.
+      // If we update balance again here, it would be double counting.
+      // So we ONLY update status.
+      
+      // Update status
+      payment.payees[i].status = 'released';
+    }
+  }
+
   payment.status = 'captured';
   await payment.save();
   return payment;

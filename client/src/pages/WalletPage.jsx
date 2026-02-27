@@ -174,31 +174,31 @@ export default function WalletPage() {
 
            {/* Stats Cards Column */}
            <div className="flex flex-col gap-4">
-              <div className="bg-gradient-to-br from-primary-600 to-primary-800 rounded-2xl p-6 text-white shadow-lg shadow-primary-900/20 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <Wallet className="w-24 h-24" />
+              <div className="bg-gradient-to-br from-primary-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg shadow-primary-900/20 relative overflow-hidden">
+                <div className="absolute -right-6 -bottom-6 opacity-20 transform rotate-12">
+                    <Wallet className="w-32 h-32" />
                 </div>
-                <p className="text-primary-100 font-medium mb-1 text-sm uppercase tracking-wide">{t('wallet.totalEarnings') || 'Total Details'}</p>
-                <h3 className="text-3xl font-bold mb-4">₹{stats.total.toLocaleString()}</h3>
+                <p className="text-primary-100 font-medium mb-1 text-sm uppercase tracking-wide">{t('wallet.currentBalance') || 'Wallet Balance'}</p>
+                <h3 className="text-4xl font-bold mb-2">₹{(stats.currentBalance !== undefined ? stats.currentBalance : stats.released).toLocaleString()}</h3>
                 <div className="flex items-center gap-2 text-xs bg-white/20 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
                     <CheckCircle className="w-3 h-3" />
-                    <span>Lifetime Earnings</span>
+                    <span>Available to Withdraw</span>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4 flex-1">
-                 <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
+                 <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
                     <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center mb-3">
                         <Clock className="w-5 h-5 text-yellow-600" />
                     </div>
                     <p className="text-xs text-gray-500 font-bold uppercase">{t('wallet.pending') || 'Pending'}</p>
                     <h3 className="text-xl font-bold text-gray-900">₹{stats.pending.toLocaleString()}</h3>
                  </div>
-                 <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
+                 <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex flex-col justify-center relative overflow-hidden">
                     <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center mb-3">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <TrendingUp className="w-5 h-5 text-green-600" />
                     </div>
-                    <p className="text-xs text-gray-500 font-bold uppercase">{t('wallet.paid') || 'Released'}</p>
+                    <p className="text-xs text-gray-500 font-bold uppercase">{t('wallet.totalEarned') || 'Total Earned'}</p>
                     <h3 className="text-xl font-bold text-gray-900">₹{stats.released.toLocaleString()}</h3>
                  </div>
               </div>

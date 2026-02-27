@@ -412,7 +412,7 @@ export async function verifyStartOtp(req, res) {
     return res.status(403).json({ message: 'Only assigned workers can start the job' });
   }
 
-  if (job.status !== 'assigned' && job.status !== 'en_route' && job.status !== 'accepted') {
+  if (job.status !== 'assigned' && job.status !== 'en_route' && job.status !== 'arrived' && job.status !== 'accepted') {
     return res.status(400).json({ message: `Job is already ${job.status}` });
   }
 
@@ -457,9 +457,19 @@ export async function arrivedAtLocation(req, res) {
   }
 
   if (job.status !== 'en_route') {
+     // Allow if already arrived (idempotent)
+     if (job.status === 'arrived') {
+        return res.json({ message: 'Already marked as arrived', job });
+     }
      return res.status(400).json({ message: 'Job must be en route to arrive' });
   }
 
+  job.status = 'arrived';
+  // Generate OTP when arriving if not already set (should be set, but fallback)
+  if (!job.startOtp) {
+     job.startOtp = Math.floor(1000 + Math.random() * 9000).toString();
+  }
+  
   job.timeline = job.timeline || {};
   job.timeline.arrivedAt = new Date();
   await job.save();
@@ -584,45 +594,15 @@ export async function completeJob(req, res) {
     );
   }
 
-  // Ensure payment record exists and payouts are released
-  try {
-    let payment = await Payment.findOne({ job: job._id });
-    if (!payment && job.assignedWorkers && job.assignedWorkers.length > 0) {
-      const totalAmount = job.budget?.max || job.budget?.min || 500;
-      const platformFeePct = 5;
-      const platformFee = (totalAmount * platformFeePct) / 100;
-      const netToWorkers = totalAmount - platformFee;
-      const amountPerWorker = Math.floor(netToWorkers / job.assignedWorkers.length);
-
-      const payees = job.assignedWorkers.map(workerId => ({
-        worker: workerId,
-        amount: amountPerWorker,
-        status: 'released'
-      }));
-
-      payment = await Payment.create({
-        job: job._id,
-        payer: job.customer,
-        payees,
-        platformFeePct,
-        total: totalAmount,
-        currency: 'INR',
-        status: 'captured',
-        stripePaymentIntentId: `offline_${job._id}_${Date.now()}`
-      });
-    } else if (payment) {
-      await releasePayouts(payment._id);
-    }
-  } catch (error) {
-    console.error('Error creating/releasing payout on job completion:', error);
-  }
+  // Remove automatic payment creation. The customer must initiate payment manually.
+  // We will just notify the customer to pay now.
 
   // Notify Customer
   await notify({
     userId: job.customer._id,
     type: 'job_update',
     title: 'Job Completed',
-    body: `Worker has marked the job as completed. Please review the proof of work.`,
+    body: `Worker has marked the job as completed. Please review the completed work and proceed to payment.`,
     link: `/jobs/${job._id}`,
     metadata: { jobId: job._id },
     channels: ['inapp', 'email']
@@ -823,6 +803,97 @@ export async function getMyDisputes(req, res) {
   } catch (error) {
     console.error('Error fetching my disputes:', error);
     res.status(500).json({ message: 'Server error fetching disputes' });
+  }
+}
+
+import Rating from '../models/Rating.js';
+
+export async function submitRating(req, res) {
+  const { jobId } = req.params;
+  const { workerId, punctuality, quality, professionalism, review } = req.body;
+
+  try {
+    const job = await Job.findById(jobId).populate('customer').populate('assignedWorkers');
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    // Determine rater role
+    const isCustomer = job.customer._id.toString() === req.user._id.toString();
+    const isWorker = job.assignedWorkers.some(w => w._id.toString() === req.user._id.toString());
+
+    if (!isCustomer && !isWorker) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const overall = (Number(punctuality) + Number(quality) + Number(professionalism)) / 3;
+
+    if (isCustomer) {
+      if (!workerId) return res.status(400).json({ message: 'workerId required' });
+      
+      // Check if duplicate rating
+      const existing = await Rating.findOne({ 
+        job: jobId, 
+        worker: workerId, 
+        raterRole: 'customer' 
+      });
+      if (existing) return res.status(400).json({ message: 'Already rated this worker for this job' });
+
+      await Rating.create({
+        job: jobId,
+        task: null,
+        worker: workerId,
+        customer: req.user._id,
+        punctuality,
+        quality,
+        professionalism,
+        review,
+        overall,
+        raterRole: 'customer'
+      });
+      
+      // Update Worker Stats (simplified)
+      await WorkerProfile.updateOne(
+        { user: workerId },
+        { 
+          $inc: { 'ratingStats.count': 1, 'ratingStats.sum': overall, completedJobs: 1 }, 
+        }
+      );
+
+      // Release Payout to Worker Wallet
+      try {
+        const payment = await Payment.findOne({ job: jobId });
+        if (payment && (payment.status === 'captured' || payment.status === 'succeeded')) {
+             await releasePayouts(payment._id);
+        }
+      } catch (err) {
+        console.error('Failed to release payout after rating:', err);
+      }
+    } else {
+      // Worker rating Customer
+      const existing = await Rating.findOne({ 
+        job: jobId, 
+        worker: req.user._id, // The worker who is rating
+        raterRole: 'worker' 
+      });
+      if (existing) return res.status(400).json({ message: 'Already rated this customer for this job' });
+
+      await Rating.create({
+        job: jobId,
+        task: null,
+        worker: req.user._id,
+        customer: job.customer._id,
+        punctuality,
+        quality,
+        professionalism,
+        review,
+        overall,
+        raterRole: 'worker'
+      });
+    }
+
+    return res.json({ message: 'Rating submitted successfully' });
+  } catch (error) {
+    console.error('Submit Rating Error:', error);
+    return res.status(500).json({ message: 'Server error submitting rating' });
   }
 }
 
