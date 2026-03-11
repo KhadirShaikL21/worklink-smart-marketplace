@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkLink Job Lifecycle (Whiteboard Style)</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #000000;
+      /* exact colors mapped to the whiteboard aesthetic */
+      --cust-clr: #e0f0ff;
+      --work-clr: #e0f8e0;
+      --sys-clr: #f4e6ff;
+      --pay-clr: #ffefcc;
+      --alert-clr: #ffe6e6;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: var(--bg);
+      background-image: 
+        linear-gradient(to right, #ececec 1px, transparent 1px),
+        linear-gradient(to bottom, #ececec 1px, transparent 1px);
+      background-size: 20px 20px;
+      font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif;
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+      box-sizing: border-box;
+      overflow-x: auto;
+    }
+
+    .canvas {
+      position: relative;
+      width: 1300px;
+      height: 900px;
+      background: transparent;
+      margin-top: 20px;
+    }
+
+    /* ---- GLOBALS ---- */
+    .top-banner {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffcc00;
+      border: 3px solid #000;
+      border-radius: 40px;
+      padding: 10px 40px;
+      font-size: 38px;
+      font-weight: 800;
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+      z-index: 20;
+      white-space: nowrap;
+    }
+
+    .giant-logo {
+      position: absolute;
+      top: 60px;
+      left: 40px;
+      color: #e50914;
+      font-size: 100px;
+      font-weight: 900;
+      line-height: 1;
+      text-shadow: 3px 3px 0 #000, 5px 5px 10px rgba(229,9,20,0.4);
+      z-index: 10;
+      font-family: 'Arial Black', Impact, sans-serif;
+      letter-spacing: -6px;
+    }
+    
+    .logo-sub {
+      position: absolute;
+      top: 155px;
+      left: 60px;
+      font-size: 18px;
+      color: #e50914;
+      font-weight: bold;
+      text-shadow: 2px 2px 0 #000;
+      -webkit-text-stroke: 1px #000;
+      z-index: 10;
+    }
+
+    .legend-box {
+      position: absolute;
+      top: 60px;
+      right: 40px;
+      background: #fff;
+      border: 2px dashed #000;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 2px 2px 0 #000;
+      font-size: 14px;
+      font-weight: bold;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .legend-color { width: 20px; height: 20px; border: 2px solid #000; border-radius: 4px; }
+
+    /* ---- SVG LINES ---- */
+    svg#lines {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 5;
+      overflow: visible;
+      pointer-events: none;
+    }
+    
+    .edge-solid {
+      fill: none;
+      stroke: #000;
+      stroke-width: 3.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    
+    .edge-dashed {
+      fill: none;
+      stroke: #000;
+      stroke-width: 2.5;
+      stroke-dasharray: 8 6;
+      stroke-linecap: round;
+    }
+
+    .line-label-bg { fill: #fff; }
+    .line-label-text {
+      fill: #000;
+      font-size: 14px;
+      font-weight: bold;
+      font-family: 'Comic Sans MS', sans-serif;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    /* ---- NODES ---- */
+    .box {
+      position: absolute;
+      background: #fff;
+      border: 3px solid #000;
+      padding: 10px;
+      border-radius: 12px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 15px;
+      box-sizing: border-box;
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.9);
+      font-weight: bold;
+      line-height: 1.3;
+    }
+
+    .icon-img {
+      font-size: 38px;
+      margin-bottom: 8px;
+    }
+
+    .sm-text {
+      font-size: 12px;
+      font-weight: normal;
+      color: #333;
+      margin-top: 4px;
+    }
+
+    /* ---- NODE STYLES ---- */
+    .b-cust { background: var(--cust-clr); border-color: #0066cc; width: 160px; height: 120px; }
+    .b-work { background: var(--work-clr); border-color: #00802b; width: 160px; height: 120px; }
+    .b-sys { background: var(--sys-clr); border-color: #8000ff; width: 160px; height: 120px; }
+    .b-pay { background: var(--pay-clr); border-color: #cc6600; width: 170px; height: 120px; }
+    .b-alert { background: var(--alert-clr); border-color: #cc0000; width: 150px; height: 120px; }
+
+    /* specific shapes */
+    .db-cylinder {
+      width: 100px;
+      height: 70px;
+      border-radius: 50%;
+      background: #cccccc;
+      border: 2px dashed #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      box-shadow: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="canvas" id="canvas">
+
+    <!-- Header & Decals -->
+    <div class="top-banner">End-to-End Job Lifecycle</div>
+    <div class="giant-logo">W<span style="font-size:80px">L</span></div>
+    <div class="logo-sub">SERVICES</div>
+    
+    <div class="legend-box">
+      <div class="legend-item"><div class="legend-color" style="background:var(--cust-clr)"></div> Customer Action</div>
+      <div class="legend-item"><div class="legend-color" style="background:var(--work-clr)"></div> Worker Action</div>
+      <div class="legend-item"><div class="legend-color" style="background:var(--sys-clr)"></div> System / AI</div>
+      <div class="legend-item"><div class="legend-color" style="background:var(--pay-clr)"></div> Payments / Final</div>
+    </div>
+
+    <!-- SVG for Lines -->
+    <svg id="lines" aria-hidden="true" width="1300" height="900">
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#000"/>
+        </marker>
+        <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#0066cc"/>
+        </marker>
+        <marker id="arrow-green" markerWidth="8" markerHeight="8" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#00802b"/>
+        </marker>
+      </defs>
+    </svg>
+
+    <!-- ==== WORKFLOW NODES (S-Curve Timeline Pattern) ==== -->
+
+    <!-- ROW 1 (Left to Right) -->
+    <div class="box b-cust" id="n1" style="top: 180px; left: 60px;">
+       <div class="icon-img">📝</div>
+       1. Create Job<br><span class="sm-text">Customer describes issue via Voice/Video</span>
+    </div>
+
+    <div class="box b-sys" id="n2" style="top: 180px; left: 340px;">
+       <div class="icon-img">🤖</div>
+       2. AI Formatting<br><span class="sm-text">Gemini extracts category & intent</span>
+    </div>
+
+    <div class="box b-sys" id="n3" style="top: 180px; left: 620px; border-radius: 50px;">
+       <div class="icon-img">🎯</div>
+       3. Match Engine<br><span class="sm-text">Munkres algorithm picks best worker</span>
+    </div>
+
+    <div class="box b-work" id="n4" style="top: 180px; left: 900px;">
+       <div class="icon-img">✅</div>
+       4. Accepted<br><span class="sm-text">Worker accepts job assignment</span>
+    </div>
+
+    <!-- ROW 2 (Right to Left) -->
+    <div class="box b-work" id="n5" style="top: 420px; left: 900px;">
+       <div class="icon-img">📍</div>
+       5. En Route<br><span class="sm-text">Live GPS tracked to customer</span>
+    </div>
+
+    <div class="box b-alert" id="n6" style="top: 420px; left: 620px;">
+       <div class="icon-img">🔑</div>
+       6. Arrived & OTP<br><span class="sm-text">Customer reads out 4-digit code</span>
+    </div>
+
+    <div class="box b-work" id="n7" style="top: 420px; left: 340px;">
+       <div class="icon-img">📸</div>
+       7. In Progress<br><span class="sm-text">Worker fixes issue & uploads photo proof</span>
+    </div>
+
+    <div class="box b-cust" id="n8" style="top: 420px; left: 60px;">
+       <div class="icon-img">🏁</div>
+       8. Completed<br><span class="sm-text">Customer approves the work proof</span>
+    </div>
+
+    <!-- ROW 3 (Left to Right) -->
+    <div class="box b-pay" id="n9" style="top: 660px; left: 60px;">
+       <div class="icon-img">💳</div>
+       9. Payment<br><span class="sm-text">Stripe captures the escrowed funds</span>
+    </div>
+
+    <div class="box b-cust" id="n10" style="top: 660px; left: 340px;">
+       <div class="icon-img">⭐</div>
+       10. Ratings<br><span class="sm-text">Reviews submitted bidirectionally</span>
+    </div>
+
+    <div class="box b-pay" id="n11" style="top: 660px; left: 620px; border-radius: 50% 50% 10px 10px;">
+       <div class="icon-img">💰</div>
+       11. Wallet Sync<br><span class="sm-text">Worker earnings formally updated</span>
+    </div>
+    
+    <div class="box b-alert" id="n12" style="top: 660px; left: 900px; border-color:#000;">
+       <div class="icon-img">🎉</div>
+       12. Finished<br><span class="sm-text">Cycle Complete</span>
+    </div>
+
+    <!-- Side Data Items (Dashed lines connecting) -->
+    <div class="box db-cylinder" id="db1" style="top: 100px; left: 240px;">Status=OPEN</div>
+    <div class="box db-cylinder" id="db2" style="top: 290px; left: 1050px;">Status=ASSIGN</div>
+    <div class="box db-cylinder" id="db3" style="top: 320px; left: 250px;">Status=PROGRESS</div>
+    <div class="box db-cylinder" id="db4" style="top: 550px; left: 170px;">Status=COMPLETED</div>
+    
+  </div>
+
+  <script>
+    // Format: [from, to, dashed, text, strokeColor, bold, dxOff, dyOff, pathType]
+    const edges = [
+      // Primary Workflow (S-Curve)
+      ["n1", "n2", false, "Voice/Video", "#0066cc", true, 0, -12, 'straight'],
+      ["n2", "n3", false, "Parsed JSON", "#8000ff", true, 0, -12, 'straight'],
+      ["n3", "n4", false, "Assigns", "#8000ff", true, 0, -12, 'straight'],
+      
+      // Right Drop down
+      ["n4", "n5", false, "Starts Travel", "#00802b", true, 45, 0, 'orth_y'],
+      
+      // Reverse flow (Right to Left)
+      ["n5", "n6", false, "Arrives", "#00802b", true, 0, -12, 'straight'],
+      ["n6", "n7", false, "Worker enters code", "#cc0000", true, 0, -12, 'straight'],
+      ["n7", "n8", false, "Uploads Proof", "#00802b", true, 0, -12, 'straight'],
+      
+      // Left Drop down
+      ["n8", "n9", false, "Mark Done", "#0066cc", true, -45, 0, 'orth_y'],
+      
+      // Bottom flow (Left to Right)
+      ["n9", "n10", false, "Capture Funds", "#cc6600", true, 0, -12, 'straight'],
+      ["n10", "n11", false, "Calculates Stats", "#0066cc", true, 0, -12, 'straight'],
+      ["n11", "n12", false, "Loop Ends", "#cc6600", true, 0, -12, 'straight'],
+
+      // DB Status Indicators (Dashed)
+      ["n1", "db1", true, "", "#000", false, 0,0, 'straight'],
+      ["n4", "db2", true, "", "#000", false, 0,0, 'straight'],
+      ["n7", "db3", true, "", "#000", false, 0,0, 'straight'],
+      ["n8", "db4", true, "", "#000", false, 0,0, 'straight']
+    ];
+
+    function draw() {
+      const svg = document.getElementById("lines");
+      // clear existing lines
+      svg.querySelectorAll("path, text, rect").forEach(e => {
+        if(e.tagName !== 'defs' && e.parentNode === svg) e.remove();
+      });
+
+      const base = svg.getBoundingClientRect();
+
+      function getCenter(el) {
+        const rect = el.getBoundingClientRect();
+        return {
+          x: rect.left - base.left + rect.width / 2,
+          y: rect.top - base.top + rect.height / 2,
+          w: rect.width,
+          h: rect.height
+        };
+      }
+
+      edges.forEach(([fromId, toId, dashed, label, strokeColor, isBold, dxOff, dyOff, pathType]) => {
+        const fromEl = document.getElementById(fromId);
+        const toEl = document.getElementById(toId);
+        if (!fromEl || !toEl) return;
+
+        let from = getCenter(fromEl);
+        let to = getCenter(toEl);
+        let d = "";
+
+        let dx = to.x - from.x;
+        let dy = to.y - from.y;
+        let len = Math.sqrt(dx*dx + dy*dy);
+        
+        // Smart edge trimming
+        let startTrim = from.w/2 + 5;
+        let endTrim = to.w/2 + 10;
+        
+        if (len > startTrim + endTrim) {
+          if (pathType === 'straight') {
+             from.x += (dx/len) * startTrim;
+             from.y += (dy/len) * (from.h/2);
+             to.x -= (dx/len) * endTrim;
+             to.y -= (dy/len) * (to.h/2);
+          } else if(pathType === 'orth_y') {
+             // vertical drop mostly
+             from.y += from.h/2 + 5;
+             to.y -= to.h/2 + 10;
+          }
+        }
+
+        if (pathType === 'orth_x') {
+           let midX = (from.x + to.x) / 2;
+           d = `M ${from.x},${from.y} L ${midX},${from.y} L ${midX},${to.y} L ${to.x},${to.y}`;
+        } else if (pathType === 'orth_y') {
+           let midY = (from.y + to.y) / 2;
+           d = `M ${from.x},${from.y} L ${from.x},${midY} L ${to.x},${midY} L ${to.x},${to.y}`;
+        } else {
+           // Straight
+           d = `M ${from.x},${from.y} L ${to.x},${to.y}`;
+        }
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", d);
+        
+        if (dashed) {
+           path.setAttribute("class", "edge-dashed");
+        } else {
+           path.setAttribute("class", "edge-solid");
+           if (isBold) {
+             path.setAttribute("stroke-width", "4.5");
+           }
+        }
+        
+        if (strokeColor && strokeColor !== "#000") {
+           path.setAttribute("stroke", strokeColor);
+           if (strokeColor === "#0066cc") path.setAttribute("marker-end", "url(#arrow-blue)");
+           else if (strokeColor === "#00802b") path.setAttribute("marker-end", "url(#arrow-green)");
+           else path.setAttribute("marker-end", "url(#arrow)");
+        } else {
+           path.setAttribute("marker-end", "url(#arrow)");
+        }
+        
+        svg.appendChild(path);
+
+        // Labels
+        if (label) {
+          let cx, cy;
+          if(pathType === 'orth_y') {
+             cx = from.x + (dxOff || 0);
+             cy = (from.y + to.y) / 2 + (dyOff || 0);
+          } else {
+             cx = (from.x + to.x) / 2 + (dxOff || 0);
+             cy = (from.y + to.y) / 2 + (dyOff || -12);
+          }
+
+          // Calc width roughly
+          let textWidth = label.length * 8 + 10;
+
+          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          rect.setAttribute("x", cx - (textWidth/2));
+          rect.setAttribute("y", cy - 12);
+          rect.setAttribute("width", textWidth);
+          rect.setAttribute("height", 24);
+          rect.setAttribute("rx", "12");
+          rect.setAttribute("class", "line-label-bg");
+
+          // optional border for label
+          rect.setAttribute("stroke", strokeColor !== "#000" ? strokeColor : "#777");
+          rect.setAttribute("stroke-width", "1.5");
+
+          const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          text.setAttribute("x", cx);
+          text.setAttribute("y", cy + 2);
+          text.setAttribute("class", "line-label-text");
+          text.setAttribute("fill", strokeColor !== "#000" ? strokeColor : "#000");
+
+          if (from.x === to.x || pathType === 'orth_y') {
+            text.setAttribute("transform", `rotate(-90 ${cx} ${cy})`);
+          }
+
+          text.textContent = label;
+          svg.appendChild(rect);
+          svg.appendChild(text);
+        }
+      });
+    }
+
+    window.addEventListener("load", draw);
+    window.addEventListener("resize", draw);
+    setTimeout(draw, 100);
+  </script>
+</body>
+</html>

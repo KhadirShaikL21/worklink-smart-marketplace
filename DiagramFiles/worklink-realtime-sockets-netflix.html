@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WorkLink Real-Time & Chat Flow</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #000000;
+      --cust-clr: #e0f0ff;
+      --work-clr: #e0f8e0;
+      --sys-clr: #f4e6ff;
+      --pay-clr: #ffefcc;
+      --alert-clr: #ffe6e6;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: var(--bg);
+      background-image: 
+        linear-gradient(to right, #ececec 1px, transparent 1px),
+        linear-gradient(to bottom, #ececec 1px, transparent 1px);
+      background-size: 20px 20px;
+      font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', sans-serif;
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+      box-sizing: border-box;
+      overflow-x: auto;
+    }
+
+    /* Increased canvas sizes slightly to spread out elements */
+    .canvas {
+      position: relative;
+      width: 1500px;
+      height: 1050px;
+      background: transparent;
+      margin-top: 40px;
+    }
+
+    /* ---- GLOBALS ---- */
+    .top-banner {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #ffcc00;
+      border: 3px solid #000;
+      border-radius: 40px;
+      padding: 10px 40px;
+      font-size: 38px;
+      font-weight: 800;
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+      z-index: 20;
+      white-space: nowrap;
+    }
+
+    .giant-logo {
+      position: absolute;
+      top: 40px;
+      left: 30px;
+      color: #e50914;
+      font-size: 80px;
+      font-weight: 900;
+      line-height: 1;
+      text-shadow: 3px 3px 0 #000, 5px 5px 10px rgba(229,9,20,0.4);
+      z-index: 10;
+      font-family: 'Arial Black', Impact, sans-serif;
+      letter-spacing: -4px;
+    }
+    
+    .logo-sub {
+      position: absolute;
+      top: 120px;
+      left: 45px;
+      font-size: 16px;
+      color: #e50914;
+      font-weight: bold;
+      text-shadow: 2px 2px 0 #000;
+      -webkit-text-stroke: 1px #000;
+      z-index: 10;
+    }
+
+    .legend-box {
+      position: absolute;
+      top: 30px;
+      right: 30px;
+      background: #fff;
+      border: 2px dashed #000;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 2px 2px 0 #000;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 25;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .legend-color { width: 20px; height: 20px; border: 2px solid #000; border-radius: 4px; }
+
+    /* ---- ZONES ---- */
+    .zone {
+      position: absolute;
+      border: 4px dashed #ccc;
+      border-radius: 20px;
+      z-index: 1;
+      padding: 20px;
+      font-size: 28px;
+      color: #aaa;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      pointer-events: none;
+      display: flex;
+      justify-content: center;
+    }
+    .zone-title {
+      background: #fff;
+      padding: 0 20px;
+      position: absolute;
+      top: -18px;
+    }
+
+    /* ---- SVG LINES ---- */
+    svg#lines {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 5;
+      overflow: visible;
+      pointer-events: none;
+    }
+    
+    .edge-solid {
+      fill: none;
+      stroke: #000;
+      stroke-width: 3.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    
+    .edge-dashed {
+      fill: none;
+      stroke: #000;
+      stroke-width: 2.5;
+      stroke-dasharray: 8 6;
+      stroke-linecap: round;
+    }
+
+    .line-label-bg { 
+       fill: #fff; 
+       stroke-width: 1.5;
+    }
+    .line-label-text {
+      fill: #000;
+      font-size: 13px;
+      font-weight: bold;
+      font-family: 'Comic Sans MS', sans-serif;
+      text-anchor: middle;
+      dominant-baseline: middle;
+    }
+
+    /* ---- NODES ---- */
+    .box {
+      position: absolute;
+      background: #fff;
+      border: 3px solid #000;
+      padding: 10px;
+      border-radius: 12px;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 15px;
+      box-sizing: border-box;
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.9);
+      font-weight: bold;
+      line-height: 1.3;
+    }
+
+    .icon-img {
+      font-size: 38px;
+      margin-bottom: 8px;
+    }
+
+    .sm-text {
+      font-size: 12px;
+      font-weight: normal;
+      color: #333;
+      margin-top: 4px;
+    }
+
+    /* ---- NODE STYLES ---- */
+    .b-cust { background: var(--cust-clr); border-color: #0066cc; width: 180px; height: 130px; }
+    .b-work { background: var(--work-clr); border-color: #00802b; width: 180px; height: 130px; }
+    .b-sys { background: var(--sys-clr); border-color: #8000ff; width: 180px; height: 120px; }
+    .b-core { background: #ffe6e6; border-color: #cc0000; width: 200px; height: 140px; border-radius: 20px; } /* Socket IO Hub */
+    
+    .db-cylinder {
+      width: 140px;
+      height: 120px;
+      border-radius: 20px 20px 70px 70px;
+      background: #e6e6e6;
+      border: 3px dashed #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      box-shadow: 4px 4px 0px rgba(0,0,0,0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="canvas" id="canvas">
+
+    <!-- Header & Decals -->
+    <div class="top-banner">Real-Time Chat & Live Tracking</div>
+    <div class="giant-logo">W<span style="font-size:70px">L</span></div>
+    <div class="logo-sub">SOCKETS</div>
+    
+    <div class="legend-box">
+      <div class="legend-item"><div class="legend-color" style="background:var(--cust-clr)"></div> Client / App Users</div>
+      <div class="legend-item"><div class="legend-color" style="background:#ffe6e6"></div> Socket.io Gateway</div>
+      <div class="legend-item"><div class="legend-color" style="background:var(--sys-clr)"></div> Backend Controllers</div>
+      <div class="legend-item"><div class="legend-color" style="background:var(--work-clr)"></div> Push Notifications</div>
+    </div>
+
+    <!-- Background Zones (Slightly re-spaced to give more padding) -->
+    <div class="zone" style="left: 40px; top: 180px; width: 340px; height: 800px;"><span class="zone-title">CLIENT DEVICES</span></div>
+    <div class="zone" style="left: 420px; top: 180px; width: 500px; height: 800px;"><span class="zone-title">WEBSOCKET LAYER</span></div>
+    <div class="zone" style="left: 960px; top: 180px; width: 340px; height: 800px;"><span class="zone-title">DATA PIPELINE</span></div>
+
+    <!-- SVG for Lines -->
+    <svg id="lines" aria-hidden="true" width="1500" height="1050">
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#000"/>
+        </marker>
+        <marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#0066cc"/>
+        </marker>
+        <marker id="arrow-purp" markerWidth="8" markerHeight="8" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#8000ff"/>
+        </marker>
+        <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="7.5" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#cc0000"/>
+        </marker>
+      </defs>
+    </svg>
+
+    <!-- ==== ORCHESTRATION NODES ==== -->
+
+    <!-- Devices -->
+    <div class="box b-cust" id="n_cust" style="top: 320px; left: 100px;">
+       <div class="icon-img">📱</div>
+       Customer App<br><span class="sm-text">React (Socket Context)</span>
+    </div>
+
+    <div class="box b-cust" id="n_work" style="top: 750px; left: 100px;">
+       <div class="icon-img">🚗</div>
+       Worker App<br><span class="sm-text">Pushes GPS & Msg</span>
+    </div>
+
+    <!-- Core Socket Hub -->
+    <div class="box b-core" id="n_socket" style="top: 520px; left: 570px;">
+       <div class="icon-img">⚡</div>
+       Socket.io Server<br><span class="sm-text">Manages JWT Auth & Rooms</span>
+    </div>
+
+    <!-- Auth Sub-module (Top of Gateway, Moved up and padded) -->
+    <div class="box b-sys" id="n_auth" style="top: 250px; left: 580px; height: 100px; border-radius: 50px;">
+       <div class="icon-img" style="font-size:28px">🔑</div>
+       <span style="font-size:14px; font-weight:bold;">Socket Middleware</span><br>
+       <span class="sm-text">Verifies Token</span>
+    </div>
+
+    <!-- Room Management (Bottom of Gateway, Padded downwards) -->
+    <div class="box b-sys" id="n_room" style="top: 800px; left: 580px; height: 100px;">
+       <div class="icon-img" style="font-size:28px">🚪</div>
+       <span style="font-size:14px; font-weight:bold;">Room: Job_ID_123</span>
+    </div>
+
+    <!-- DB Storage -->
+    <div class="box db-cylinder" id="n_dbmsg" style="top: 280px; left: 1060px;">
+       <div class="icon-img" style="font-size:28px">💬</div>
+       Mongo: Messages<br><span class="sm-text">Historical sync</span>
+    </div>
+
+    <div class="box db-cylinder" id="n_dbjob" style="top: 530px; left: 1060px;">
+       <div class="icon-img" style="font-size:28px">🗺️</div>
+       Mongo: Job Cache<br><span class="sm-text">Latest Lat/Lng</span>
+    </div>
+
+    <!-- Offline Notification Trigger -->
+    <div class="box b-work" id="n_push" style="top: 780px; left: 1040px; border-radius:15px;">
+       <div class="icon-img">🔔</div>
+       Email / Push Alert<br><span class="sm-text">Fired if user offline</span>
+    </div>
+    
+  </div>
+
+  <script>
+    // Format: [from, to, dashed, text, strokeColor, bold, dxOff, dyOff, pathType]
+    const edges = [
+      // 1. Connection handshakes (Clean curved arcs)
+      ["n_cust", "n_auth", false, "1. wss:// Connect + JWT", "#0066cc", true, -20, -50, 'curve_up'],
+      ["n_work", "n_auth", true, "1. wss:// Connect + JWT", "#0066cc", false, -100, 30, 'orth_y'],
+      
+      // 2. Auth success down to Hub
+      ["n_auth", "n_socket", false, "2. Authenticated", "#000", false, 0, 0, 'straight'],
+
+      // Live Tracking Flow (Routing around the middle)
+      ["n_work", "n_socket", false, "3. emit('location')", "#8000ff", true, 0, 25, 'curve_down'],
+      ["n_socket", "n_cust", false, "4. broadcast('moved')", "#cc0000", true, 0, 15, 'straight'],
+      ["n_socket", "n_dbjob", true, "Cache lat/lng", "#000", false, 0, -10, 'straight'],
+
+      // Chat Routing (Pushed down explicitly to hit room)
+      ["n_cust", "n_room", false, "5. emit('msg')", "#0066cc", true, -50, 40, 'orth_y_deep'],
+      ["n_room", "n_socket", true, "", "#000", false, 0, 0, 'straight'],
+      
+      // Persist to DB (Straight line away from overlaps)
+      ["n_socket", "n_dbmsg", false, "6. Persist to DB", "#000", true, 0, 15, 'straight'],
+      
+      // Delivery validation (Middle line)
+      ["n_socket", "n_work", false, "7. emit('new_msg')", "#cc0000", true, 0, -20, 'straight'],
+      
+      // Fallback
+      ["n_room", "n_push", true, "8. Fallback Notification", "#00802b", true, 0, -12, 'straight']
+    ];
+
+    function draw() {
+      const svg = document.getElementById("lines");
+      svg.querySelectorAll("path, text, rect").forEach(e => {
+        if(e.tagName !== 'defs' && e.parentNode === svg) e.remove();
+      });
+
+      const base = svg.getBoundingClientRect();
+
+      function getCenter(el) {
+        const rect = el.getBoundingClientRect();
+        return {
+          x: rect.left - base.left + rect.width / 2,
+          y: rect.top - base.top + rect.height / 2,
+          w: rect.width,
+          h: rect.height,
+          left: rect.left - base.left,
+          top: rect.top - base.top,
+          right: rect.left - base.left + rect.width,
+          bottom: rect.top - base.top + rect.height
+        };
+      }
+
+      edges.forEach(([fromId, toId, dashed, label, strokeColor, isBold, dxOff, dyOff, pathType]) => {
+        const fromEl = document.getElementById(fromId);
+        const toEl = document.getElementById(toId);
+        if (!fromEl || !toEl) return;
+
+        let from = getCenter(fromEl);
+        let to = getCenter(toEl);
+        let d = "";
+
+        let dx = to.x - from.x;
+        let dy = to.y - from.y;
+        let len = Math.sqrt(dx*dx + dy*dy);
+        
+        // Very careful start/end trimming so arrows don't poke inside divs
+        let startTrim = from.w/2 + 5;
+        let endTrim = to.w/2 + 10;
+        
+        let ctrlX = 0, ctrlY = 0;
+
+        if (pathType === 'straight') {
+           if(len > startTrim + endTrim) {
+             from.x += (dx/len) * startTrim;
+             from.y += (dy/len) * (from.h/2);
+             to.x -= (dx/len) * endTrim;
+             to.y -= (dy/len) * (to.h/2);
+           }
+           d = `M ${from.x},${from.y} L ${to.x},${to.y}`;
+        } 
+        else if (pathType === 'orth_y') {
+           // Basic drop line
+           from.y += (dy > 0 ? from.h/2 + 5 : -(from.h/2 + 5));
+           to.y -= (dy > 0 ? to.h/2 + 10 : -(to.h/2 + 10));
+           
+           let midY = (from.y + to.y) / 2;
+           d = `M ${from.x},${from.y} L ${from.x},${midY} L ${to.x},${midY} L ${to.x},${to.y}`;
+        } 
+        else if (pathType === 'orth_y_deep') {
+           // Ensure this line goes far around blocks to not overlap
+           from.x += from.w/2; 
+           to.x -= to.w/2; 
+           let midX = from.x + 40; // Push out right
+
+           d = `M ${from.x},${from.y} L ${midX},${from.y} L ${midX},${to.y} L ${to.x},${to.y}`;
+        }
+        else if (pathType === 'curve_up') {
+           from.y -= from.h/2; // come out the top
+           to.x -= to.w/2; // go into left side
+
+           ctrlX = from.x;
+           ctrlY = to.y - 120; // pull arc up super high to avoid overlapping the legend
+           d = `M ${from.x},${from.y} Q ${ctrlX},${ctrlY} ${to.x},${to.y}`;
+        } 
+        else if (pathType === 'curve_down') {
+           from.x += from.w/2; // come out right side
+           to.y += to.h/2; // go into bottom
+
+           ctrlX = (from.x + to.x) / 2;
+           ctrlY = Math.max(from.y, to.y) + 120; 
+           d = `M ${from.x},${from.y} Q ${ctrlX},${ctrlY} ${to.x},${to.y}`;
+        }
+
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", d);
+        
+        if (dashed) {
+           path.setAttribute("class", "edge-dashed");
+        } else {
+           path.setAttribute("class", "edge-solid");
+           if (isBold) path.setAttribute("stroke-width", "4.5");
+        }
+        
+        // Arrows
+        if (strokeColor && strokeColor !== "#000") {
+           path.setAttribute("stroke", strokeColor);
+           if (strokeColor === "#0066cc") path.setAttribute("marker-end", "url(#arrow-blue)");
+           else if (strokeColor === "#8000ff") path.setAttribute("marker-end", "url(#arrow-purp)");
+           else if (strokeColor === "#cc0000") path.setAttribute("marker-end", "url(#arrow-red)");
+           else path.setAttribute("marker-end", "url(#arrow)");
+        } else {
+           path.setAttribute("marker-end", "url(#arrow)");
+        }
+        
+        svg.appendChild(path);
+
+        // Labels
+        if (label) {
+          let cx, cy;
+          if (pathType === 'curve_up' || pathType === 'curve_down') {
+             // standard quadratic mid-point approximation
+             cx = 0.25*from.x + 0.5*ctrlX + 0.25*to.x + (dxOff || 0);
+             cy = 0.25*from.y + 0.5*ctrlY + 0.25*to.y + (dyOff || 0);
+          } else if(pathType === 'orth_y') {
+             cx = from.x + (dxOff || 0);
+             cy = (from.y + to.y) / 2 + (dyOff || 0);
+          } else if (pathType === 'orth_y_deep') {
+             cx = from.x + 40 + (dxOff || 0);
+             cy = (from.y + to.y)/2 + (dyOff || 0);
+          } else {
+             cx = (from.x + to.x) / 2 + (dxOff || 0);
+             cy = (from.y + to.y) / 2 + (dyOff || -12);
+          }
+
+          let textWidth = label.length * 7.5 + 15;
+
+          const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          rect.setAttribute("x", cx - (textWidth/2));
+          rect.setAttribute("y", cy - 12);
+          rect.setAttribute("width", textWidth);
+          rect.setAttribute("height", 24);
+          rect.setAttribute("rx", "12");
+          rect.setAttribute("class", "line-label-bg");
+          rect.setAttribute("stroke", strokeColor !== "#000" ? strokeColor : "#777");
+
+          const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          text.setAttribute("x", cx);
+          text.setAttribute("y", cy + 2);
+          text.setAttribute("class", "line-label-text");
+          text.setAttribute("fill", strokeColor !== "#000" ? strokeColor : "#000");
+
+          // Do not rotate vertical if user requested specific dxOff / orth deep
+          if (from.x === to.x && pathType === 'straight' && dxOff === 0) {
+            text.setAttribute("transform", `rotate(-90 ${cx} ${cy})`);
+          }
+
+          text.textContent = label;
+          svg.appendChild(rect);
+          svg.appendChild(text);
+        }
+      });
+    }
+
+    window.addEventListener("load", draw);
+    window.addEventListener("resize", draw);
+    setTimeout(draw, 100);
+  </script>
+</body>
+</html>
