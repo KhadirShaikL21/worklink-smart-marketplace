@@ -28,4 +28,46 @@ Thumbs.db
 
 # Misc
 *.pid
-*.bak  
+*.bak
+
+# ── Project-specific: non-source assets ─────────────────────────────────────
+
+# UML / architecture diagram images
+WorkLink/
+
+# HTML diagram files
+DiagramFiles/
+
+# Research paper (LaTeX source + compiled PDF)
+*.tex
+*.tex.txt
+paper.tex.txt
+WorkLinkResearchPaper.pdf
+*.pdf
+
+# PlantUML
+plantuml.jar
+*.puml
+*.pu
+
+# Stripe local binary
+stripe.exe
+
+# Leftover junk files at repo root
+Bob
+({
+({
+(
+{
+w._id.toString()
+
+# Python virtual environment
+.venv/
+
+# Overleaf / LaTeX build artefacts
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+OVERLEAF_SUBMISSION_GUIDE.md
