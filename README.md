@@ -565,7 +565,7 @@ Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
 
 <div align="center">
 
-Built with care for internship submission — Problem Statement 7, Full Stack AI Web Application.
+
 
 **WorkLink** · connecting workers and customers, one job at a time.
 
