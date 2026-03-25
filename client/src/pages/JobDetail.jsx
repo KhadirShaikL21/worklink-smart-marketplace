@@ -687,20 +687,25 @@ const HammerIcon = ({ className }) => (
                  {(isCustomer && job.assignedWorkers?.length > 0) && (
                      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                          <h3 className="font-bold text-gray-900 mb-4">{t('jobDetail.assignedProfessional')}</h3>
-                         {job.assignedWorkers.map(worker => (
-                             <div key={worker._id} className="flex items-center gap-4">
+                         {job.assignedWorkers.map(worker => {
+                             const workerName = typeof worker === 'string' ? `Worker ${worker.slice(-4)}` : (worker?.name || worker?.user?.name || `Worker ${(worker?._id || 'unknown').toString().slice(-4)}`);
+                             const workerInitial = workerName ? workerName[0].toUpperCase() : 'W';
+                             
+                             return (
+                             <div key={worker?._id || worker} className="flex items-center gap-4">
                                  <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-lg">
-                                     {worker.name[0]}
+                                     {workerInitial}
                                  </div>
                                  <div className="flex-1 min-w-0">
-                                     <h4 className="font-semibold text-gray-900 truncate">{worker.name}</h4>
+                                     <h4 className="font-semibold text-gray-900 truncate">{workerName}</h4>
                                      <div className="flex items-center text-sm text-yellow-500">
                                          <Star className="w-3.5 h-3.5 fill-current" />
                                          <span className="ml-1 text-gray-600 font-medium">4.8 (120 reviews)</span>
                                      </div>
                                  </div>
                              </div>
-                         ))}
+                            );
+                         })}
                      </div>
                  )}
 

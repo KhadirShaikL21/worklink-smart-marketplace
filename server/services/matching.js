@@ -34,6 +34,11 @@ export async function rankWorkersForJob(jobId, weights = DEFAULT_WEIGHTS) {
   const job = await Job.findById(jobId);
   if (!job) throw new Error('Job not found');
 
+  // Validate job location
+  if (!job.location?.coordinates || job.location.coordinates.length < 2) {
+    throw new Error('Job location coordinates are not properly set');
+  }
+
   const query = {
     'location.coordinates': { $exists: true }
   };
@@ -53,11 +58,19 @@ export async function rankWorkersForJob(jobId, weights = DEFAULT_WEIGHTS) {
       rankedWorkers = await WorkerProfile.find(fallbackQuery).populate('user');
   }
 
-  const distanceValues = rankedWorkers.map(w =>
-    (job.location?.coordinates && w.location?.coordinates) 
-      ? haversineDistanceKm(job.location.coordinates, w.location.coordinates) 
-      : 9999
-  );
+  // Calculate distances with validation
+  const distanceValues = rankedWorkers.map(w => {
+    if (!w.location?.coordinates || w.location.coordinates.length < 2) {
+      return 9999; // Worker location missing
+    }
+    try {
+      const distance = haversineDistanceKm(job.location.coordinates, w.location.coordinates);
+      return isNaN(distance) ? 9999 : distance;
+    } catch (e) {
+      console.error('Distance calculation error:', e);
+      return 9999;
+    }
+  });
   
   const workerList = rankedWorkers; // Alias
 
@@ -65,14 +78,17 @@ export async function rankWorkersForJob(jobId, weights = DEFAULT_WEIGHTS) {
   const ratingValues = workerList.map(w => w.ratingStats?.average || 4.0);
   const experienceValues = workerList.map(w => w.experienceYears || 0);
 
-  const distMin = Math.min(...distanceValues, 0);
-  const distMax = Math.max(...distanceValues, 1);
-  const rateMin = Math.min(...rateValues, 0);
-  const rateMax = Math.max(...rateValues, 1);
-  const ratingMin = Math.min(...ratingValues, 0);
-  const ratingMax = Math.max(...ratingValues, 5);
-  const expMin = Math.min(...experienceValues, 0);
-  const expMax = Math.max(...experienceValues, 1);
+  // Only use valid distances (exclude 9999 fallback) for min/max calculation
+  const validDistances = distanceValues.filter(d => d !== 9999);
+  const distMin = validDistances.length > 0 ? Math.min(...validDistances) : 0;
+  const distMax = validDistances.length > 0 ? Math.max(...validDistances) : 1;
+  
+  const rateMin = rateValues.length > 0 ? Math.min(...rateValues) : 0;
+  const rateMax = rateValues.length > 0 ? Math.max(...rateValues) : 1;
+  const ratingMin = ratingValues.length > 0 ? Math.min(...ratingValues) : 0;
+  const ratingMax = ratingValues.length > 0 ? Math.max(...ratingValues) : 5;
+  const expMin = experienceValues.length > 0 ? Math.min(...experienceValues) : 0;
+  const expMax = experienceValues.length > 0 ? Math.max(...experienceValues) : 1;
 
   const ranked = workerList
     .map((w, idx) => {

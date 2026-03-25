@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { User, Star, MapPin, IndianRupee, CheckCircle, ArrowLeft } from 'lucide-react';
+import clsx from 'clsx';
 
 export default function Matching() {
   const { jobId } = useParams();
@@ -53,6 +54,26 @@ export default function Matching() {
     setAssigning(true);
     setError('');
     try {
+      // Check if only one worker and 100% skill match
+      if (ranking?.ranked?.length === 1) {
+        const candidate = ranking.ranked[0];
+        const skillMatchPercentage = job.skillsRequired?.length
+          ? (candidate.skills.filter(s => job.skillsRequired.includes(s)).length / job.skillsRequired.length) * 100
+          : 0;
+        
+        if (skillMatchPercentage === 100) {
+          // Auto-assign this single worker with 100% skill match
+          await api.post(`/api/jobs/${jobId}/assign`, { 
+            count: 1,
+            workerIds: [candidate.workerId] 
+          });
+          const j = await api.get(`/api/jobs/${jobId}`);
+          setJob(j.data.job);
+          alert('Worker auto-assigned with 100% skill match!');
+          return;
+        }
+      }
+      
       await api.post(`/api/jobs/${jobId}/assign`, { count: Number(workersNeeded) || 1 });
       const j = await api.get(`/api/jobs/${jobId}`);
       setJob(j.data.job);
@@ -188,19 +209,27 @@ export default function Matching() {
             </div>
           ) : (
             <div className="space-y-4">
-              {ranking.ranked.map(candidate => (
+              {ranking.ranked.map(candidate => {
+                const matchedSkills = candidate.skills.filter(s => job.skillsRequired?.includes(s)) || [];
+                const skillMatchPercentage = job.skillsRequired?.length
+                  ? (matchedSkills.length / job.skillsRequired.length) * 100
+                  : 0;
+                
+                return (
                 <div key={candidate.workerId} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className="h-12 w-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-lg">
-                        {candidate.score > 80 ? 'A+' : candidate.score > 60 ? 'A' : 'B'}
+                      <div className={clsx("h-12 w-12 rounded-full flex items-center justify-center font-bold text-lg text-white", 
+                        skillMatchPercentage === 100 ? "bg-green-600" : skillMatchPercentage >= 75 ? "bg-blue-600" : skillMatchPercentage >= 50 ? "bg-amber-600" : "bg-gray-600"
+                      )}>
+                        {skillMatchPercentage.toFixed(0)}%
                       </div>
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">Worker {(candidate.workerId || 'unknown').toString().slice(-4)}</h3>
                         <div className="flex items-center text-sm text-gray-500 mt-1 space-x-4">
                           <span className="flex items-center">
                             <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                            Match Score: {candidate.score}
+                            {matchedSkills.length}/{job.skillsRequired?.length || 0} Skills Matched
                           </span>
                           <span className="flex items-center">
                             <MapPin className="w-4 h-4 text-gray-400 mr-1" />
@@ -240,7 +269,8 @@ export default function Matching() {
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>
