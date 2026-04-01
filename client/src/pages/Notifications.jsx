@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Bell, Check, Clock, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 import { useNotifications } from '../context/NotificationContext.jsx';
+import NavigationHeader from '../components/NavigationHeader';
 
 export default function Notifications() {
+  const navigate = useNavigate();
   const { notifications, markAsRead, markAllAsRead, refresh, loading, initialized } = useNotifications();
   const [error, setError] = useState('');
 
@@ -19,12 +21,20 @@ export default function Notifications() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
+      <NavigationHeader 
+        title="Notifications" 
+        breadcrumbs={[
+          { label: 'Home', path: '/' },
+          { label: 'Notifications' }
+        ]}
+        showBack={true}
+      />
+      
+      <div className="mt-8 flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary-100 rounded-lg">
             <Bell className="w-6 h-6 text-primary-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
         </div>
         {notifications.some(i => !i.read) && (
           <button 

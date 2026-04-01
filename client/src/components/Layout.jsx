@@ -182,7 +182,6 @@ export default function Layout() {
                 </>
               ) : (
                 <div className="flex items-center gap-3">
-                  <LanguageSwitcher />
                   <Link to="/login" className="text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors">
                     {t('nav.login')}
                   </Link>

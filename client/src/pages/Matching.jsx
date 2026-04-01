@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { User, Star, MapPin, IndianRupee, CheckCircle, ArrowLeft } from 'lucide-react';
+import NavigationHeader from '../components/NavigationHeader';
 import clsx from 'clsx';
 
 export default function Matching() {
@@ -130,13 +131,16 @@ export default function Matching() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <button 
-        onClick={() => navigate(`/jobs/${jobId}`)}
-        className="mb-6 inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-700"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1" />
-        Back to Job Details
-      </button>
+      <NavigationHeader 
+        title="Match Workers" 
+        breadcrumbs={[
+          { label: 'Home', path: '/' },
+          { label: 'Jobs', path: '/jobs' },
+          { label: 'Match Workers' }
+        ]}
+        showBack={true}
+        onBackClick={() => navigate(`/jobs/${jobId}`)}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Job Info */}

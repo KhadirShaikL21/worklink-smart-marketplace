@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import { JobDetailSkeleton } from '../components/ui/Skeleton';
+import NavigationHeader from '../components/NavigationHeader';
 
 export default function FindWork() {
   const navigate = useNavigate();
@@ -72,9 +73,19 @@ export default function FindWork() {
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10">
+        <NavigationHeader 
+          title={t('findWork.title')} 
+          breadcrumbs={[
+            { label: 'Home', path: '/' },
+            { label: t('findWork.title') }
+          ]}
+          showBack={true}
+        />
+      </div>
       
       {/* Hero Header */}
-      <div className="relative bg-white border-b border-gray-200 overflow-hidden">
+      <div className="relative bg-white border-b border-gray-200 overflow-hidden mt-6">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-white opacity-50 pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
            <motion.div 

@@ -329,6 +329,12 @@
     "message": "संदेश",
     "call": "कॉल",
     "videoCall": "वीडियो कॉल",
+    "yourTasks": "आपके कार्य",
+    "expired": "ऑफर समाप्त हो गया",
+    "timeLeft": "बचा समय",
+    "jobAssigned": "काम सौंपा गया",
+    "acceptPrompt": "एक ग्राहक ने आपको यह काम सौंपा है। आगे बढ़ने के लिए इसे स्वीकार करें।",
+    "completionVideo": "काम वीडियो",
     "status": {
         "open": "खुला है",
         "assigned": "सौंपा गया",

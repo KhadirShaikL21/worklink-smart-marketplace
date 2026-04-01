@@ -5,6 +5,7 @@ import { Sparkles, Send, Loader2, Globe, User, FileText, CheckCircle2, Clock, In
 import clsx from 'clsx';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
+import NavigationHeader from '../components/NavigationHeader';
 
 export default function Assistant() {
   const navigate = useNavigate();
@@ -260,6 +261,15 @@ export default function Assistant() {
   return (
     <div className="min-h-screen bg-gray-50/50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        <NavigationHeader 
+          title="AI Job Assistant" 
+          breadcrumbs={[
+            { label: 'Home', path: '/' },
+            { label: 'AI Assistant' }
+          ]}
+          showBack={true}
+        />
+        
         <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}

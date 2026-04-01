@@ -5,6 +5,7 @@ import { optimizeTeam } from '../services/team.js';
 import ChatRoom from '../models/ChatRoom.js';
 import { notify } from '../services/notifications.js';
 import { releasePayouts } from '../services/payments.js';
+import { emitNotification } from '../services/realtime.js';
 
 import WorkerProfile from '../models/WorkerProfile.js';
 import Payment from '../models/Payment.js';
@@ -353,6 +354,15 @@ export async function acceptJob(req, res) {
   job.timeline.acceptedAt = new Date(); // You might want to add acceptedAt to Job schema timeline or just use updatedAt
   await job.save();
 
+  // Emit socket notification to customer
+  await emitNotification(job.customer, {
+    type: 'job_update',
+    title: 'Job Accepted',
+    body: `Worker has accepted the job assignment.`,
+    link: `/jobs/${job._id}`,
+    metadata: { jobId: job._id }
+  });
+
   // Notify Customer
   await notify({
     userId: job.customer,
@@ -385,7 +395,14 @@ export async function startTravel(req, res) {
   job.timeline = job.timeline || {};
   job.timeline.travelStartedAt = new Date();
   await job.save();
-
+  // Emit socket notification to customer
+  await emitNotification(job.customer, {
+    type: 'job_update',
+    title: 'Worker En Route',
+    body: `Worker is on the way to ${job.title}`,
+    link: `/jobs/${job._id}`,
+    metadata: { jobId: job._id }
+  });
   // Notify Customer
   await notify({
     userId: job.customer,
@@ -483,6 +500,12 @@ export async function arrivedAtLocation(req, res) {
     link: `/jobs/${job._id}`,
     metadata: { jobId: job._id }
   });
+
+  // Emit real-time socket update
+  emitNotification(job.customer, { type: 'job_update', jobId: job._id, status: job.status });
+  for (const workerId of job.assignedWorkers) {
+    emitNotification(workerId, { type: 'job_update', jobId: job._id, status: job.status });
+  }
 
   return res.json({ message: 'Arrival marked', job });
 }
@@ -596,6 +619,15 @@ export async function completeJob(req, res) {
 
   // Remove automatic payment creation. The customer must initiate payment manually.
   // We will just notify the customer to pay now.
+
+  // Emit real-time socket notification to customer
+  await emitNotification(job.customer._id, {
+    type: 'job_update',
+    title: 'Job Completed',
+    body: `Worker has marked the job as completed. Please review the completed work and proceed to payment.`,
+    link: `/jobs/${job._id}`,
+    metadata: { jobId: job._id }
+  });
 
   // Notify Customer
   await notify({
@@ -858,6 +890,15 @@ export async function submitRating(req, res) {
         }
       );
 
+      // Emit real-time socket notification to worker about the rating
+      await emitNotification(workerId, {
+        type: 'rating_received',
+        title: 'You received a rating',
+        body: `Customer rated you ${overall.toFixed(1)} stars for the job: ${job.title}`,
+        link: `/jobs/${job._id}`,
+        metadata: { jobId: job._id, rating: overall }
+      });
+
       // Release Payout to Worker Wallet
       try {
         const payment = await Payment.findOne({ job: jobId });
@@ -887,6 +928,15 @@ export async function submitRating(req, res) {
         review,
         overall,
         raterRole: 'worker'
+      });
+
+      // Emit real-time socket notification to customer about the worker rating
+      await emitNotification(job.customer._id, {
+        type: 'rating_received',
+        title: 'You received a rating',
+        body: `Worker rated you ${overall.toFixed(1)} stars for the job: ${job.title}`,
+        link: `/jobs/${job._id}`,
+        metadata: { jobId: job._id, rating: overall }
       });
     }
 

@@ -44,6 +44,16 @@ export function NotificationProvider({ children }) {
     loadNotifications();
   }, [loadNotifications]);
 
+  // Auto-refresh notifications every 6 seconds for real-time sync
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      loadNotifications();
+    }, 6000);
+    
+    return () => clearInterval(interval);
+  }, [user, loadNotifications]);
+
   useEffect(() => {
     if (!socket || !user) return;
     const handleNotification = note => {

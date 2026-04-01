@@ -395,6 +395,12 @@
     "message": "Message",
     "call": "Call",
     "videoCall": "Video Call",
+    "yourTasks": "Your Tasks",
+    "expired": "Offer Expired",
+    "timeLeft": "time left",
+    "jobAssigned": "Job Assigned",
+    "acceptPrompt": "A customer has assigned you this job. Accept it to proceed.",
+    "completionVideo": "Work Video",
     "status": {
         "open": "Open",
         "assigned": "Assigned",

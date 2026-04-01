@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { createApp } from './app.js';
 import env from '../config/env.js';
 import { initRealtime } from '../services/realtime.js';
+import { startPaymentAutoRelease } from '../services/payments.js';
 
 // Handle unhandled Promise rejections
 process.on('unhandledRejection', (reason, p) => {
@@ -26,6 +27,9 @@ async function start() {
     const server = http.createServer(app);
 
     initRealtime(server);
+    
+    // Start auto-release job for 24+ hour pending payments
+    startPaymentAutoRelease();
 
     const port = env.port;
     server.listen(port, () => {

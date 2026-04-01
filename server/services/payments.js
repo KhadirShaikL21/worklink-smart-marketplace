@@ -168,3 +168,51 @@ export async function refundPayment(paymentId) {
   await payment.save();
   return payment;
 }
+
+// Auto-release pending payments after 24 hours
+export async function startPaymentAutoRelease() {
+  // Run every hour to check for pending payments older than 24 hours
+  setInterval(async () => {
+    try {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      
+      // Find all payments that are captured but have pending payees older than 24 hours
+      const paymentsToRelease = await Payment.find({
+        status: 'captured',
+        'payees.status': 'pending',
+        createdAt: { $lte: twentyFourHoursAgo }
+      });
+
+      for (const payment of paymentsToRelease) {
+        // Release any pending payees
+        let updated = false;
+        for (let i = 0; i < payment.payees.length; i++) {
+          if (payment.payees[i].status === 'pending') {
+            payment.payees[i].status = 'released';
+            updated = true;
+          }
+        }
+        
+        if (updated) {
+          await payment.save();
+          console.log(`Auto-released payment ${payment._id} after 24 hours`);
+          
+          // Notify workers about auto-release
+          for (const payee of payment.payees) {
+            if (payee.worker && payee.status === 'released') {
+              await notify({
+                userId: payee.worker,
+                type: 'payment_released',
+                title: 'Payment Released',
+                body: `Your payment of ${payment.currency} ${payee.amount} has been automatically released to your wallet after 24 hours.`,
+                link: '/wallet'
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error in auto-release payment job:', error);
+    }
+  }, 60 * 60 * 1000); // Run every 1 hour
+}

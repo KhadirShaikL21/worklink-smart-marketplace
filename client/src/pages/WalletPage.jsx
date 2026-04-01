@@ -49,6 +49,7 @@ export default function WalletPage() {
 
         if(statsRes && statsRes.data) {
            setStats(statsRes.data.stats || { total: 0, pending: 0, released: 0 });
+           // Get all transactions, not just first 10
            setTransactions(statsRes.data.recentTransactions || []);
         }
         
@@ -179,7 +180,7 @@ export default function WalletPage() {
                     <Wallet className="w-32 h-32" />
                 </div>
                 <p className="text-primary-100 font-medium mb-1 text-sm uppercase tracking-wide">{t('wallet.currentBalance') || 'Wallet Balance'}</p>
-                <h3 className="text-4xl font-bold mb-2">₹{(stats.currentBalance !== undefined ? stats.currentBalance : stats.released).toLocaleString()}</h3>
+                <h3 className="text-4xl font-bold mb-2">₹{stats.currentBalance.toLocaleString()}</h3>
                 <div className="flex items-center gap-2 text-xs bg-white/20 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
                     <CheckCircle className="w-3 h-3" />
                     <span>Available to Withdraw</span>

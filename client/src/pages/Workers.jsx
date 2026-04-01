@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { Search, Filter, User, Briefcase, Star, IndianRupee, MapPin, Loader2 } from 'lucide-react';
 import { WorkerCardSkeleton } from '../components/ui/Skeleton.jsx';
 import { useTranslation } from 'react-i18next';
+import NavigationHeader from '../components/NavigationHeader';
 
 export default function Workers() {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [workers, setWorkers] = useState([]);
   const [skill, setSkill] = useState('');
@@ -43,16 +45,31 @@ export default function Workers() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-search with debounce when search or skill changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      load();
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, skill, subSkill]);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-10 gap-6">
-        <div>
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">{t('workers.title')}</h1>
-          <p className="text-lg text-gray-600 mt-2 max-w-2xl">{t('workers.subtitle')}</p>
-        </div>
-        
+      <NavigationHeader 
+        title={t('workers.title')} 
+        subtitle={t('workers.subtitle')}
+        breadcrumbs={[
+          { label: 'Home', path: '/' },
+          { label: t('workers.title') }
+        ]}
+        showBack={true}
+      />
+      
+      <div className="mt-8">
         {/* Search and Filter Bar */}
-        <div className="w-full md:w-auto bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row gap-2">
+        <div className="w-full bg-white p-2 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row gap-2 mb-8">
           <div className="relative flex-grow md:w-64">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400" />

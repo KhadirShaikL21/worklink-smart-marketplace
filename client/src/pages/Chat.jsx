@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
 import { useSocket } from '../context/SocketContext.jsx';
@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { Send, MessageSquare, User, Mic, Play, Pause, ArrowLeft, Briefcase, Trash2, StopCircle, Loader2, Video, Phone } from 'lucide-react';
 import VideoCall from '../components/VideoCall.jsx';
 import { ChatSkeleton } from '../components/ui/Skeleton.jsx';
+import NavigationHeader from '../components/NavigationHeader';
 import clsx from 'clsx';
 
 // Audio Player Component
@@ -86,6 +87,7 @@ export default function Chat() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { socket } = useSocket();
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState([]);
   const [activeRoom, setActiveRoom] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -136,18 +138,83 @@ export default function Chat() {
   
   const messagesEndRef = useRef(null);
 
-  // Parse query params for roomId
+  // Parse query params for roomId and jobId
+  const searchParams = new URLSearchParams(location.search);
+  const roomIdParam = searchParams.get('roomId');
+  const jobIdParam = searchParams.get('jobId');
+
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const roomId = params.get('roomId');
-    if (roomId && rooms.length > 0) {
-      const room = rooms.find(r => r._id === roomId);
-      if (room) {
-        setActiveRoom(room);
-        setShowMobileChat(true);
+    const loadAndFilterRoom = async () => {
+      try {
+        const res = await api.get('/api/chat/rooms');
+        const allRooms = res.data.rooms || [];
+        
+        // Deduplicate rooms by job - keep only the latest room per job
+        const roomsByJob = new Map();
+        const directRooms = [];
+        
+        allRooms.forEach(room => {
+          if (room.type === 'group' && room.job?._id) {
+            const jobId = room.job._id;
+            const existing = roomsByJob.get(jobId);
+            if (!existing || new Date(room.updatedAt) > new Date(existing.updatedAt)) {
+              roomsByJob.set(jobId, room);
+            }
+          } else {
+            directRooms.push(room);
+          }
+        });
+        
+        const filteredRooms = [
+          ...Array.from(roomsByJob.values()),
+          ...directRooms
+        ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+        
+        // Filter by jobId if present
+        if (jobIdParam) {
+          const jobRooms = filteredRooms.filter(r => {
+            const roomJobId = r.job?._id || r.job;
+            return roomJobId && roomJobId.toString() === jobIdParam.toString();
+          });
+          setRooms(jobRooms);
+          
+          // Set active room to the one matching roomId or the first job room
+          if (roomIdParam) {
+            const room = jobRooms.find(r => r._id === roomIdParam);
+            if (room) {
+              setActiveRoom(room);
+              setShowMobileChat(true);
+            }
+          } else if (jobRooms.length > 0) {
+            setActiveRoom(jobRooms[0]);
+            setShowMobileChat(true);
+          }
+        } else if (roomIdParam) {
+          // Filter by roomId if present (and jobId not present)
+          const room = filteredRooms.find(r => r._id === roomIdParam);
+          if (room) {
+            setRooms([room]);
+            setActiveRoom(room);
+            setShowMobileChat(true);
+          } else {
+            console.warn('Room not found:', roomIdParam);
+            setRooms(filteredRooms);
+          }
+        } else {
+          // No filters, show all rooms
+          setRooms(filteredRooms);
+        }
+      } catch (err) {
+        console.error('Failed to load rooms', err);
       }
+    };
+    
+    if (roomIdParam || jobIdParam) {
+      loadAndFilterRoom();
+    } else {
+      loadRooms();
     }
-  }, [rooms]);
+  }, [roomIdParam, jobIdParam]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -156,7 +223,33 @@ export default function Chat() {
   const loadRooms = async () => {
     try {
       const res = await api.get('/api/chat/rooms');
-      setRooms(res.data.rooms || []);
+      const allRooms = res.data.rooms || [];
+      
+      // Deduplicate rooms by job - keep only the latest room per job
+      const roomsByJob = new Map();
+      const directRooms = [];
+      
+      allRooms.forEach(room => {
+        if (room.type === 'group' && room.job?._id) {
+          const jobId = room.job._id;
+          const existing = roomsByJob.get(jobId);
+          // Keep the room with the most recent updatedAt
+          if (!existing || new Date(room.updatedAt) > new Date(existing.updatedAt)) {
+            roomsByJob.set(jobId, room);
+          }
+        } else {
+          // Keep all direct message rooms
+          directRooms.push(room);
+        }
+      });
+      
+      // Combine deduplicated job rooms with direct rooms, sorted by updatedAt
+      const filteredRooms = [
+        ...Array.from(roomsByJob.values()),
+        ...directRooms
+      ].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+      
+      setRooms(filteredRooms);
     } catch (err) {
       console.error('Failed to load rooms', err);
     }
@@ -178,7 +271,16 @@ export default function Chat() {
 
   useEffect(() => {
     loadRooms();
-  }, []);
+    
+    // Refetch rooms every 5 seconds for real-time sync
+    const interval = setInterval(() => {
+      if (!roomIdParam) {
+        loadRooms();
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [roomIdParam]);
 
   useEffect(() => {
     if (activeRoom) {
@@ -197,6 +299,7 @@ export default function Chat() {
       // Check if message belongs to current room
       if (msg.room === activeRoom._id) {
         setMessages(prev => [msg, ...prev]);
+        scrollToBottom();
       }
     };
     socket.on('chat:message', handler);
@@ -389,22 +492,32 @@ export default function Chat() {
   
   // Render
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 h-[calc(100vh-5rem)]">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-full flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gray-50/50 flex flex-col">
+      <div className="flex-1 flex flex-col max-w-6xl mx-auto w-full px-4 py-8">
+        <NavigationHeader 
+          title={t('chat.messages')} 
+          breadcrumbs={[
+            { label: 'Home', path: '/' },
+            { label: t('chat.messages') }
+          ]}
+          showBack={true}
+        />
+        
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col md:flex-row">
         
         {/* Sidebar / Room Selection */}
         <div className={clsx(
-          "w-full md:w-80 border-r border-gray-200 bg-gray-50 flex flex-col",
+          "w-full md:w-80 border-r border-gray-200 bg-gray-50 flex flex-col max-h-[calc(100vh-12rem)]",
           showMobileChat ? "hidden md:flex" : "flex"
         )}>
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200 flex-shrink-0">
             <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <MessageSquare className="w-6 h-6 text-primary-600" />
               {t('chat.messages')}
             </h2>
           </div>
           
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {rooms.length === 0 ? (
               <div className="p-4 text-center text-gray-500 text-sm">
                 {t('chat.noConversations')}
@@ -615,6 +728,7 @@ export default function Chat() {
             autoAnswer={autoAnswer}
          />
       )}
+      </div>
     </div>
   );
 }

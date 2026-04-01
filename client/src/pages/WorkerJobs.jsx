@@ -1,25 +1,40 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { Briefcase, AlertCircle, CheckCircle, Clock, Search } from 'lucide-react';
 import { JobCardSkeleton } from '../components/ui/Skeleton.jsx';
+import NavigationHeader from '../components/NavigationHeader';
 import clsx from 'clsx';
 import { useTranslation } from 'react-i18next';
 
 export default function WorkerJobs() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('active'); // 'active', 'completed'
 
-  useEffect(() => {
+  const loadJobs = () => {
     setLoading(true);
     api
       .get('/api/jobs?role=worker') // Explicitly fetch worker jobs
       .then(res => setJobs(res.data.jobs))
       .catch(err => setError(err.response?.data?.message || 'Failed to load jobs'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadJobs();
+  }, []);
+
+  // Auto-refetch worker jobs every 4 seconds for real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadJobs();
+    }, 4000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const getUrgencyColor = (urgency) => {
@@ -38,6 +53,15 @@ export default function WorkerJobs() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <NavigationHeader 
+          title={t('myJobs.title')} 
+          breadcrumbs={[
+            { label: 'Home', path: '/' },
+            { label: t('myJobs.title') }
+          ]}
+          showBack={true}
+        />
+        
         <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">{t('myJobs.title')}</h1>

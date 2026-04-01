@@ -1,28 +1,132 @@
 import User from '../models/User.js';
 import Job from '../models/Job.js';
 import Payment from '../models/Payment.js';
+import Rating from '../models/Rating.js';
 import { releasePayouts, refundPayment } from '../services/payments.js';
 
 export async function getDashboardStats(req, res) {
   try {
     const totalUsers = await User.countDocuments();
     const totalWorkers = await User.countDocuments({ roles: 'worker' });
+    const totalCustomers = await User.countDocuments({ roles: 'customer' });
     const totalJobs = await Job.countDocuments();
     const activeJobs = await Job.countDocuments({ status: { $in: ['assigned', 'in_progress'] } });
+    const completedJobs = await Job.countDocuments({ status: 'completed' });
+    // Only count OPEN disputes (exclude resolved/closed ones)
+    const disputedJobs = await Job.countDocuments({ 'dispute.status': 'open' });
     
-    // Calculate total revenue (assuming amount is in cents or smallest unit, adjusting if needed)
+    // Calculate revenue: Platform fee (5%) from all captured payments
     const payments = await Payment.aggregate([
-      { $match: { status: 'succeeded' } },
-      { $group: { _id: null, total: { $sum: "$amount" } } }
+      { $match: { status: 'captured' } },
+      { $group: { 
+        _id: null, 
+        total: { $sum: "$total" },
+        count: { $sum: 1 },
+        platformFeeTotal: { $sum: { $multiply: ["$total", { $divide: ["$platformFeePct", 100] }] } }
+      }}
     ]);
-    const totalRevenue = payments.length > 0 ? payments[0].total : 0;
+    
+    // Calculate worker payouts from released payments
+    const workerPayouts = await Payment.aggregate([
+      { $unwind: "$payees" },
+      { $match: { "payees.status": "released" } },
+      { $group: { _id: null, total: { $sum: "$payees.amount" } } }
+    ]);
+
+    // Fetch all payment details with job and worker info using aggregation for proper populates
+    const allPayments = await Payment.aggregate([
+      { $sort: { createdAt: -1 } },
+      { $limit: 500 },
+      {
+        $lookup: {
+          from: 'jobs',
+          localField: 'job',
+          foreignField: '_id',
+          as: 'job'
+        }
+      },
+      { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'payer',
+          foreignField: '_id',
+          as: 'payer'
+        }
+      },
+      { $unwind: { path: '$payer', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'payees.worker',
+          foreignField: '_id',
+          as: 'workers'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          job: { title: '$job.title', status: '$job.status', budget: '$job.budget', assignedWorkers: '$job.assignedWorkers' },
+          payer: { name: '$payer.name', email: '$payer.email' },
+          payees: 1,
+          platformFeePct: 1,
+          total: 1,
+          currency: 1,
+          status: 1,
+          createdAt: 1,
+          workers: 1
+        }
+      }
+    ]);
+
+    // Enrich payees with worker names
+    const enrichedPayments = allPayments.map(payment => {
+      const payeesWithNames = payment.payees.map(payee => {
+        const worker = payment.workers.find(w => w._id.toString() === payee.worker.toString());
+        return {
+          ...payee,
+          workerName: worker?.name || '-'
+        };
+      });
+      return {
+        ...payment,
+        payees: payeesWithNames
+      };
+    });
+
+    const platformRevenue = payments.length > 0 ? Math.round(payments[0].platformFeeTotal) : 0;
+    const totalTransactions = payments.length > 0 ? payments[0].count : 0;
+    const totalGrossVolume = payments.length > 0 ? Math.round(payments[0].total) : 0;
+    const totalWorkerPayouts = workerPayouts.length > 0 ? Math.round(workerPayouts[0].total) : 0;
+    
+    // Total revenue displayed includes both platform fee and worker payouts for comprehensive view
+    const totalRevenue = platformRevenue + totalWorkerPayouts;
+    
+    // Average job value
+    const avgJobValue = totalTransactions > 0 ? Math.round(totalGrossVolume / totalTransactions) : 0;
+    
+    // Worker utilization: workers with at least 1 completed job
+    const activeWorkers = await User.countDocuments({
+      roles: 'worker',
+      _id: { $in: (await Job.find({ status: 'completed', assignedWorkers: { $exists: true, $ne: [] } }).distinct('assignedWorkers')) }
+    });
 
     res.json({
       totalUsers,
       totalWorkers,
+      totalCustomers,
       totalJobs,
       activeJobs,
-      totalRevenue
+      completedJobs,
+      disputedJobs,
+      totalRevenue,
+      platformRevenue,
+      totalWorkerPayouts,
+      totalGrossVolume,
+      totalTransactions,
+      avgJobValue,
+      activeWorkers,
+      recentPayments: enrichedPayments
     });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching stats', error: error.message });
@@ -76,6 +180,12 @@ export async function getUserDetails(req, res) {
       status: 'completed' 
     });
 
+    // Fetch reviews (ratings for workers)
+    const reviews = await Rating.find({ worker: userId })
+      .populate('customer', 'name avatarUrl')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
     // Disputes
     const disputes = await Job.find({ 
         $or: [
@@ -86,7 +196,21 @@ export async function getUserDetails(req, res) {
         'dispute.status': { $exists: true }
     }).select('title dispute status');
 
-    res.json({ user, stats: { jobsCreated, jobsCompleted }, disputes });
+    res.json({ 
+      user: {
+        ...user.toObject(),
+        reviews: reviews.map(r => ({
+          id: r._id,
+          reviewerName: r.customer?.name || 'Anonymous',
+          reviewerAvatar: r.customer?.avatarUrl,
+          rating: r.overall,
+          comment: r.review,
+          date: r.createdAt
+        }))
+      }, 
+      stats: { jobsCreated, jobsCompleted }, 
+      disputes 
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching user details', error: error.message });
   }

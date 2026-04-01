@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, AlertTriangle, Clock, CheckCircle, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import NavigationHeader from '../components/NavigationHeader';
 
 const StatusBadge = ({ status }) => {
   const styles = {
@@ -31,6 +32,7 @@ const StatusBadge = ({ status }) => {
 };
 
 export default function MyDisputes() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [disputes, setDisputes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,14 +69,18 @@ export default function MyDisputes() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Support Tickets</h1>
-          <p className="text-gray-500 mt-2">Track and manage your dispute resolutions</p>
-        </div>
-        <div className="bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 text-sm font-medium text-gray-600">
-           Total Issues: <span className="text-primary-600 font-bold ml-1">{disputes.length}</span>
-        </div>
+      <NavigationHeader 
+        title="My Support Tickets" 
+        subtitle="Track and manage your dispute resolutions"
+        breadcrumbs={[
+          { label: 'Home', path: '/' },
+          { label: 'My Support Tickets' }
+        ]}
+        showBack={true}
+      />
+      
+      <div className="mb-8 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100 text-sm font-medium text-gray-600 inline-block">
+         Total Issues: <span className="text-primary-600 font-bold ml-1">{disputes.length}</span>
       </div>
 
       {disputes.length === 0 ? (

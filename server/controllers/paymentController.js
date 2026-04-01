@@ -4,21 +4,47 @@ import Job from '../models/Job.js';
 import mongoose from 'mongoose';
 
 export async function createIntent(req, res) {
-  const { jobId, total, currency = 'INR', payees = [], platformFeePct = 5 } = req.body;
-  if (!jobId || !total) return res.status(400).json({ message: 'jobId and total required' });
+  const { jobId, currency = 'INR', payees = [], platformFeePct = 5 } = req.body;
+  if (!jobId) return res.status(400).json({ message: 'jobId required' });
+  
   const job = await Job.findById(jobId);
   if (!job) return res.status(404).json({ message: 'Job not found' });
   if (job.customer.toString() !== req.user._id.toString()) return res.status(403).json({ message: 'Forbidden' });
 
-  const result = await createPaymentIntent({ jobId, payerId: req.user._id, payees, total, currency, platformFeePct });
+  // Use job budget amount, not the amount from request
+  const total = job.budget?.max || 0;
+  if (total <= 0) return res.status(400).json({ message: 'Job must have a budget amount' });
+
+  // If no payees specified, use assigned workers
+  let payeeList = payees;
+  if (payeeList.length === 0 && job.assignedWorkers?.length > 0) {
+    payeeList = job.assignedWorkers.map(workerId => ({ worker: workerId }));
+  }
+
+  const result = await createPaymentIntent({ jobId, payerId: req.user._id, payees: payeeList, total, currency, platformFeePct });
   return res.status(201).json(result);
 }
 
 export async function capture(req, res) {
   const { paymentId } = req.params;
-  const payment = await markCaptured(paymentId);
-  if (!payment) return res.status(404).json({ message: 'Payment not found' });
-  return res.json({ payment });
+  try {
+    const payment = await markCaptured(paymentId);
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+    
+    // In test mode, auto-mark payees as released immediately since we don't use webhooks
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
+      payment.payees = payment.payees.map(p => ({
+        ...p,
+        status: 'released'  // Auto-release in test mode
+      }));
+      await payment.save();
+    }
+    
+    return res.json({ payment });
+  } catch (error) {
+    console.error('Payment capture error:', error);
+    return res.status(400).json({ message: error.message });
+  }
 }
 
 export async function release(req, res) {
@@ -46,19 +72,15 @@ import WorkerProfile from '../models/WorkerProfile.js';
 export async function getWorkerStats(req, res) {
   try {
     // Ensure only workers can access their stats
-    // ... existing checks ...
     if (!req.user.roles.includes('worker')) {
       return res.status(403).json({ message: 'Only workers can access wallet stats' });
     }
 
     const userId = req.user._id;
 
-    // Get current wallet balance from profile
-    const workerProfile = await WorkerProfile.findOne({ user: userId });
-    const currentBalance = workerProfile ? workerProfile.walletBalance : 0;
-    
+    // Get worker's payment stats grouped by status
     const stats = await Payment.aggregate([
-      // First match payments involving this worker
+      // Match payments involving this worker
       { $match: { 'payees.worker': new mongoose.Types.ObjectId(userId) } },
       // Unwind payees array to process individual entries
       { $unwind: '$payees' },
@@ -88,14 +110,19 @@ export async function getWorkerStats(req, res) {
       }
     });
     
+    // Total is sum of pending and released (failed amounts are excluded)
     earnings.total = earnings.released + earnings.pending;
+    
+    // currentBalance should always equal released amount (amount available to withdraw)
+    // This ensures consistency with admin dashboard totalWorkerPayouts
+    const currentBalance = earnings.released;
 
-    // Get recent transactions
+    // Get ALL transactions for this worker (not a limited list)
     const transactions = await Payment.find({ 'payees.worker': userId })
       .sort({ createdAt: -1 })
-      .limit(10)
-      .populate('job', 'title description')
-      .populate('payer', 'name email');
+      .populate('job', 'title budget status')
+      .populate('payer', 'name email')
+      .lean();
 
     // Format transactions for the frontend
     const formattedTransactions = transactions.map(t => {
@@ -103,14 +130,24 @@ export async function getWorkerStats(req, res) {
       return {
         _id: t._id,
         jobTitle: t.job?.title || 'Unknown Job',
+        jobStatus: t.job?.status || 'unknown',
         payerName: t.payer?.name || 'Unknown Payer',
         amount: payeeRecord?.amount || 0,
-        status: payeeRecord?.status,
-        date: t.createdAt
+        status: payeeRecord?.status || 'unknown',
+        platformFee: Math.round(t.total * (t.platformFeePct || 5) / 100),
+        grossAmount: t.total,
+        date: t.createdAt,
+        paymentId: t._id
       };
     });
 
-    return res.json({ stats: { ...earnings, currentBalance }, recentTransactions: formattedTransactions });
+    return res.json({ 
+      stats: { 
+        ...earnings, 
+        currentBalance  // Now equals earnings.released for consistency
+      }, 
+      recentTransactions: formattedTransactions 
+    });
   } catch (error) {
     console.error('Error fetching worker stats:', error);
     return res.status(500).json({ message: 'Failed to fetch wallet stats' });

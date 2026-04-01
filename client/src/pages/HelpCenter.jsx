@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { Search, ChevronDown, ChevronUp, Phone, MessageSquare, BookOpen, AlertCircle, CreditCard, User, Briefcase, Volume2, StopCircle } from 'lucide-react';
+import NavigationHeader from '../components/NavigationHeader';
 
 const iconMap = {
   User: <User className="w-5 h-5" />,
@@ -12,6 +14,7 @@ const iconMap = {
 
 export default function HelpCenter() {
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [openItems, setOpenItems] = useState({});
   const [playingId, setPlayingId] = useState(null);
@@ -103,25 +106,27 @@ export default function HelpCenter() {
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            {t('helpCenter.title')}
-          </h1>
-          <p className="mt-4 text-lg text-gray-500">
-            {t('helpCenter.subtitle')}
-          </p>
-          <div className="mt-6 max-w-xl mx-auto relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm shadow-sm"
-              placeholder={t('helpCenter.searchPlaceholder')}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <NavigationHeader 
+          title={t('helpCenter.title')} 
+          subtitle={t('helpCenter.subtitle')}
+          breadcrumbs={[
+            { label: 'Home', path: '/' },
+            { label: t('helpCenter.title') }
+          ]}
+          showBack={true}
+        />
+        
+        <div className="mt-8 max-w-xl mx-auto relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-gray-400" />
           </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary-500 focus:border-primary-500 sm:text-sm shadow-sm"
+            placeholder={t('helpCenter.searchPlaceholder')}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
 
         <div className="space-y-8">

@@ -105,6 +105,19 @@ export default function JobDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId]);
 
+  // Poll for updates every 3 seconds (only for active jobs to avoid unnecessary requests)
+  useEffect(() => {
+    if (!job || ['completed', 'cancelled'].includes(job.status)) {
+      return; // Don't poll for inactive jobs
+    }
+    
+    const interval = setInterval(() => {
+      load();
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [jobId, job?.status]);
+
   // Real-time updates listener
   useEffect(() => {
     if (!socket) return;
@@ -113,7 +126,7 @@ export default function JobDetail() {
     const handleNotification = (data) => {
         if (data && data.metadata && data.metadata.jobId === jobId) {
             console.log('Realtime Job Update Triggered:', data);
-            load(); // Refresh job data
+            load(); // Refresh job data immediately
         }
     };
 
@@ -121,7 +134,6 @@ export default function JobDetail() {
     socket.on('notification:new', handleNotification);
     
     // Also listen for general job updates if broadcasted
-    // If your backend emits 'job_update' specifically:
     socket.on('job_update', handleNotification);
 
     return () => {
@@ -129,6 +141,15 @@ export default function JobDetail() {
       socket.off('job_update', handleNotification);
     };
   }, [socket, jobId]);
+
+  // Listen for status message changes to trigger UI refresh
+  useEffect(() => {
+    if (statusMsg) {
+      // Auto-clear status message after 3 seconds
+      const timeout = setTimeout(() => setStatusMsg(''), 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [statusMsg]);
 
   const markSatisfaction = async status => {
     try {
@@ -151,8 +172,13 @@ export default function JobDetail() {
         professionalism: Number(rating.professionalism),
         review: rating.review
       });
-      setStatusMsg('Rating submitted successfully');
+      // Close the rating modal immediately
+      setShowRatingModal(false);
+      // Reset rating form
       setRating(r => ({ ...r, review: '' }));
+      setStatusMsg('Rating submitted successfully');
+      // Refresh job data
+      load();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to rate');
     }
@@ -446,7 +472,7 @@ const HammerIcon = ({ className }) => (
                     {/* Action Buttons */}
                     <div className="flex gap-3">
                         {chatRoomId && job.status !== 'open' && (isCustomer || isAssignedWorker) && (
-                            <button onClick={() => navigate(`/chat?roomId=${chatRoomId}`)} className="btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-sm font-semibold text-gray-700">
+                            <button onClick={() => navigate(`/chat?roomId=${chatRoomId}&jobId=${jobId}`)} className="btn-secondary flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-sm font-semibold text-gray-700">
                                 <MessageSquare className="w-4 h-4" /> {t('jobDetail.message')}
                             </button>
                         )}
@@ -670,13 +696,32 @@ const HammerIcon = ({ className }) => (
                 {isCompleted && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                          <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><CheckCircle className="w-5 h-5 text-green-600"/> {t('jobDetail.proofOfWork')}</h3>
-                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                             {(completionProof.imageUrls || []).map((url, i) => (
-                                 <div key={i} className="rounded-lg overflow-hidden border border-gray-200 aspect-square">
-                                     <img src={url} alt="Proof" className="w-full h-full object-cover hover:scale-105 transition-transform" />
-                                 </div>
-                             ))}
-                         </div>
+                         
+                         {/* Video Proof */}
+                         {completionProof.videoUrl && (
+                             <div className="mb-6">
+                                <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                    <Video className="w-4 h-4 text-blue-600" /> {t('jobDetail.completionVideo')}
+                                </h4>
+                                <div className="rounded-xl overflow-hidden bg-black aspect-video relative group">
+                                    <video src={completionProof.videoUrl} controls className="w-full h-full" />
+                                </div>
+                             </div>
+                         )}
+                         
+                         {/* Image Proofs */}
+                         {(completionProof.imageUrls || []).length > 0 && (
+                             <div>
+                                <h4 className="text-sm font-semibold text-gray-900 mb-3">Photos</h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    {completionProof.imageUrls.map((url, i) => (
+                                        <div key={i} className="rounded-lg overflow-hidden border border-gray-200 aspect-square">
+                                            <img src={url} alt={`Proof ${i+1}`} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+                                        </div>
+                                    ))}
+                                </div>
+                             </div>
+                         )}
                     </div>
                 )}
             </div>

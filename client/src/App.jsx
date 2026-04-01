@@ -30,10 +30,13 @@ function Protected({ children }) {
   const location = useLocation();
 
   if (loading) return <p>Loading...</p>;
+  
+  // Single check: not logged in → redirect to login
   if (!user) return <Navigate to="/login" replace />;
   
+  // Second check: not verified (but allow /verify-email page itself)
   if (!user.verification?.emailVerified && location.pathname !== '/verify-email') {
-     return <Navigate to="/verify-email" replace />;
+    return <Navigate to="/verify-email" replace />;
   }
 
   return children;
@@ -41,19 +44,33 @@ function Protected({ children }) {
 
 function AdminRoute({ children }) {
   const { user, loading } = useAuth();
+  
   if (loading) return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>;
-  if (!user || !user.roles.includes('admin')) {
+  
+  // Redirect non-logged-in users to login instead of home
+  if (!user) return <Navigate to="/login" replace />;
+  
+  // Redirect non-admin users to home (they are logged in)
+  if (!user.roles.includes('admin')) {
     return <Navigate to="/" replace />;
   }
+  
   return children;
 }
 
 function WorkerRoute({ children }) {
   const { user, loading } = useAuth();
+  
   if (loading) return <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>;
-  if (!user || !user.roles.includes('worker')) {
-    return <Navigate to="/jobs" replace />;
+  
+  // Redirect non-logged-in users to login
+  if (!user) return <Navigate to="/login" replace />;
+  
+  // Redirect non-worker users to home (they are logged in)
+  if (!user.roles.includes('worker')) {
+    return <Navigate to="/" replace />;
   }
+  
   return children;
 }
 

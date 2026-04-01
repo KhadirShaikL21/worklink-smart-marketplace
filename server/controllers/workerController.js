@@ -15,10 +15,17 @@ export async function listWorkers(req, res) {
     ];
   }
 
-  const profiles = await WorkerProfile.find(filters)
-    .populate({ path: 'user', select: 'name email phone roles' })
+  let profiles = await WorkerProfile.find(filters)
+    .populate({ path: 'user', select: 'name email phone roles avatarUrl' })
     .limit(100)
     .sort({ 'ratingStats.average': -1 });
+
+  // If search is provided, also filter by user name since it's from User model
+  if (search) {
+    profiles = profiles.filter(p => 
+      p.user && p.user.name && p.user.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }
 
   const workers = profiles
     .filter(p => p.user)
@@ -28,7 +35,7 @@ export async function listWorkers(req, res) {
     email: p.user.email,
     phone: p.user.phone,
     roles: p.user.roles,
-    avatarUrl: p.avatarUrl,
+    avatarUrl: p.avatarUrl || p.user.avatarUrl,
     title: p.title,
     skills: p.skills,
     experienceYears: p.experienceYears,

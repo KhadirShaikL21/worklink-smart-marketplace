@@ -400,10 +400,17 @@ export default function Home() {
           <h2 className="text-4xl font-bold text-white mb-6">Ready to get your to-do list done?</h2>
           <p className="text-xl text-primary-100 mb-10">Join thousands of satisfied usage and skilled professionals on WorkLink today.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register" className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold rounded-xl text-primary-900 bg-white hover:bg-gray-100 transition-colors">
-              Get Started Now
-              <ArrowUpRight className="ml-2 w-5 h-5" />
-            </Link>
+            {user ? (
+              <Link to="/find-work" className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold rounded-xl text-white bg-primary-600 hover:bg-primary-700 transition-colors">
+                Find Work
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Link>
+            ) : (
+              <Link to="/register" className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold rounded-xl text-primary-900 bg-white hover:bg-gray-100 transition-colors">
+                Get Started Now
+                <ArrowUpRight className="ml-2 w-5 h-5" />
+              </Link>
+            )}
             <Link to="/about" className="inline-flex items-center justify-center px-8 py-4 text-lg font-bold rounded-xl text-white border-2 border-primary-500 hover:bg-primary-800 transition-colors">
               Learn More
             </Link>

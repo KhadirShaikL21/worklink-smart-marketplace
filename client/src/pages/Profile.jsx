@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext.jsx';
 import { User, Phone, Mail, CheckCircle, XCircle, Camera, Shield, Loader2, AlertTriangle, MapPin, Briefcase, Star, Edit2, Save, X, Award, Clock, IndianRupee, CreditCard } from 'lucide-react';
+import NavigationHeader from '../components/NavigationHeader';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -12,6 +13,7 @@ export default function Profile() {
   const { t } = useTranslation();
   const { user: currentUser, refreshUser, loading: authLoading } = useAuth();
   const { userId } = useParams();
+  const navigate = useNavigate();
   
   const [profileUser, setProfileUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,55 +30,58 @@ export default function Profile() {
   const [otpError, setOtpError] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [devCode, setDevCode] = useState('');
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
+  // Calculate isOwnProfile at component level
   const isOwnProfile = !userId || userId === 'undefined' || userId === currentUser?.id;
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (authLoading) return;
-
-      setLoading(true);
-      setError('');
-      try {
-        if (isOwnProfile) {
-          if (currentUser) {
-            setProfileUser(currentUser);
-            setEditForm({
-              name: currentUser.name,
-              phone: currentUser.phone,
-              title: currentUser.workerProfile?.title || '',
-              bio: currentUser.workerProfile?.bio || '',
-              hourlyRate: currentUser.workerProfile?.hourlyRate || '',
-              skills: currentUser.workerProfile?.skills?.join(', ') || '',
-              experienceYears: currentUser.workerProfile?.experienceYears || '',
-              bankDetails: currentUser.bankDetails || {}
-            });
-          }
-        } else {
-          try {
-             // Try fetching as user first
-             const res = await api.get(`/api/users/${userId}`);
-             setProfileUser(res.data.user || res.data);
-          } catch (e) {
-             try {
-                // If failed, try worker endpoint (sometimes distinct)
-                const res = await api.get(`/api/workers/${userId}`);
-                setProfileUser(res.data.worker || res.data);
-             } catch (e2) {
-                setError('User not found');
-             }
-          }
+  const loadProfile = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      if (isOwnProfile) {
+        if (currentUser) {
+          setProfileUser(currentUser);
+          setEditForm({
+            name: currentUser.name,
+            phone: currentUser.phone,
+            title: currentUser.workerProfile?.title || '',
+            bio: currentUser.workerProfile?.bio || '',
+            hourlyRate: currentUser.workerProfile?.hourlyRate || '',
+            skills: currentUser.workerProfile?.skills?.join(', ') || '',
+            experienceYears: currentUser.workerProfile?.experienceYears || '',
+            bankDetails: currentUser.bankDetails || {}
+          });
         }
-      } catch (err) {
-        setError('Failed to load profile');
-        console.error(err);
-      } finally {
-        setLoading(false);
+      } else {
+        try {
+           // Try fetching as user first
+           const res = await api.get(`/api/users/${userId}`);
+           setProfileUser(res.data.user || res.data);
+        } catch (e) {
+           try {
+              // If failed, try worker endpoint (sometimes distinct)
+              const res = await api.get(`/api/workers/${userId}`);
+              setProfileUser(res.data.worker || res.data);
+           } catch (e2) {
+              setError('User not found');
+           }
+        }
       }
-    };
+    } catch (err) {
+      setError('Failed to load profile');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadProfile();
-  }, [userId, currentUser, isOwnProfile, authLoading]);
+  // Load profile when component mounts or when userId changes (only if auth is ready)
+  useEffect(() => {
+    if (!authLoading) {
+      loadProfile();
+    }
+  }, [userId, authLoading, currentUser]);
 
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
@@ -177,6 +182,14 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-gray-50/50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto space-y-8">
+        <NavigationHeader 
+          title="My Profile" 
+          breadcrumbs={[
+            { label: 'Home', path: '/' },
+            { label: 'My Profile' }
+          ]}
+          showBack={true}
+        />
         
         {/* Header / Cover Section */}
         <motion.div 
@@ -485,7 +498,7 @@ export default function Profile() {
                            <Star key={s} className={`w-4 h-4 ${s <= Math.round(user.ratingStats?.average || 0) ? 'fill-current' : 'text-gray-200'}`} />
                          ))}
                        </div>
-                       <p className="text-sm font-medium text-gray-500">{user.ratingStats?.count || 0} {t('profile.stats.reviews')}</p>
+                       <p className="text-sm font-medium text-gray-500">{user.reviews?.length || user.ratingStats?.count || 0} {t('profile.stats.reviews')}</p>
                      </div>
                    </div>
                    
@@ -713,7 +726,7 @@ export default function Profile() {
                         
                         <div className="space-y-8">
                             {user.reviews && user.reviews.length > 0 ? (
-                            user.reviews.map((review, idx) => (
+                            (showAllReviews ? user.reviews : user.reviews.slice(0, 2)).map((review, idx) => (
                                 <div key={review.id || idx} className="border-b border-gray-100 last:border-0 pb-8 last:pb-0">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex items-center gap-4">
@@ -750,6 +763,18 @@ export default function Profile() {
                                 <p className="text-gray-900 font-medium">{t('profile.noReviews')}</p>
                                 <p className="text-sm text-gray-500">{t('profile.reviewsPlaceholder')}</p>
                             </div>
+                            )}
+                            
+                            {/* See All / Hide Reviews Button */}
+                            {user.reviews && user.reviews.length > 2 && (
+                                <div className="flex justify-center pt-6 border-t border-gray-100">
+                                    <button
+                                        onClick={() => setShowAllReviews(!showAllReviews)}
+                                        className="px-6 py-2 text-primary-600 font-semibold hover:bg-primary-50 rounded-lg transition-colors border border-primary-200"
+                                    >
+                                        {showAllReviews ? 'Hide Reviews' : `See All Reviews (${user.reviews.length})`}
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>

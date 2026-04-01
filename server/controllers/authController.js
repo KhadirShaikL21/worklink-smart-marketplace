@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 import { requestOtp as verificationRequestOtp } from './verificationController.js';
 import WorkerProfile from '../models/WorkerProfile.js';
+import Rating from '../models/Rating.js';
 import { sendEmail } from '../services/email.js';
 import bcrypt from 'bcryptjs';
 
@@ -63,20 +64,23 @@ export async function register(req, res) {
   const exists = await User.findOne({ $or: [{ email }, { phone }] });
   if (exists) return res.status(400).json({ message: 'User already exists' });
 
+  // Properly parse isWorker: FormData sends as string "true"/"false", not boolean
+  const isWorkerBool = isWorker === true || isWorker === 'true';
+
   const user = new User({
     name,
     email,
     phone,
     passwordHash: password,
-    roles: Boolean(isWorker) ? ['worker'] : ['customer'],
-    isWorker: Boolean(isWorker),
-    isCustomer: !Boolean(isWorker),
+    roles: isWorkerBool ? ['worker'] : ['customer'],
+    isWorker: isWorkerBool,
+    isCustomer: !isWorkerBool,
     avatarUrl: req.file ? req.file.path : undefined
   });
 
   await user.save();
 
-  if (isWorker) {
+  if (isWorkerBool) {
     const skills = (profileData.skills || []).filter(Boolean);
     await WorkerProfile.findOneAndUpdate(
       { user: user._id },
@@ -184,6 +188,13 @@ export async function refresh(req, res) {
 
 export async function me(req, res) {
   const profile = await WorkerProfile.findOne({ user: req.user._id }).select('avatarUrl title skills experienceYears hourlyRate bio isAvailable completedJobs badges ratingStats');
+  
+  // Fetch reviews for workers
+  const reviews = await Rating.find({ worker: req.user._id })
+    .populate('customer', 'name avatarUrl')
+    .sort({ createdAt: -1 })
+    .limit(50);
+  
   const user = req.user.toObject();
   
   // Ensure bankDetails is included
@@ -196,6 +207,16 @@ export async function me(req, res) {
       upiId: ''
     };
   }
+  
+  // Add reviews to user object
+  user.reviews = reviews.map(r => ({
+    id: r._id,
+    reviewerName: r.customer?.name || 'Anonymous',
+    reviewerAvatar: r.customer?.avatarUrl,
+    rating: r.overall,
+    comment: r.review,
+    date: r.createdAt
+  }));
   
   if (profile) {
     if (!user.avatarUrl && profile.avatarUrl) user.avatarUrl = profile.avatarUrl;
@@ -253,6 +274,7 @@ export async function updateMe(req, res) {
     if (hourlyRate !== undefined) workerUpdates.hourlyRate = Number(hourlyRate);
     if (experienceYears !== undefined) workerUpdates.experienceYears = Number(experienceYears);
     if (skills !== undefined) workerUpdates.skills = Array.isArray(skills) ? skills : skills.split(',').map(s => s.trim()).filter(Boolean);
+    if (avatarUrl) workerUpdates.avatarUrl = avatarUrl;
     
     await WorkerProfile.findOneAndUpdate({ user: user._id }, workerUpdates, { upsert: true });
   }
