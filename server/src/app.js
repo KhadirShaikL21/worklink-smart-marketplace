@@ -24,7 +24,9 @@ export function createApp() {
         'http://localhost:5174',
         'https://worklink-smart-marketplace-client.vercel.app'
       ];
-      if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      
+      // Allow exact matches OR any Vercel preview/deployment URL
+      if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app') || !origin) {
          callback(null, true)
       } else {
          callback(new Error('Not allowed by CORS'));
