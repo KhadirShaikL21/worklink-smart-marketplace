@@ -32,16 +32,16 @@ const StatCard = ({ number, label }) => (
   </div>
 );
 
-const CategoryCard = ({ icon: Icon, title, count }) => {
+const CategoryCard = ({ icon: Icon, title, count, identifier }) => {
   const { t } = useTranslation();
   return (
-    <Link to={`/workers?category=${title}`} className="group flex flex-col items-center p-6 bg-white rounded-xl border border-gray-100 hover:border-primary-500 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+    <Link to={identifier ? `/workers?category=${identifier}` : `/workers`} className="group flex flex-col items-center p-6 bg-white rounded-xl border border-gray-100 hover:border-primary-500 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
       <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mb-4 group-hover:bg-primary-50 transition-colors shadow-sm">
         <Icon className="w-8 h-8 text-primary-600 group-hover:text-primary-700 transition-colors" />
       </div>
       <h3 className="font-bold text-gray-900 group-hover:text-primary-700 text-lg">{title}</h3>
       <span className="text-sm text-gray-500 mt-2 font-medium bg-gray-50 px-3 py-1 rounded-full text-center">
-         {count === 'View All' ? t('home.categories.viewAll') : `${count} ${t('home.categories.professionals')}`}
+         {count === 'View All' ? t('home.categories.viewAll', 'View All') : `${count} ${t('home.categories.professionals', 'Pros')}`}
       </span>
     </Link>
   );
@@ -243,12 +243,18 @@ export default function Home() {
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-            <CategoryCard icon={MapPin} title={t('home.categories.plumbing')} count="120+" />
-            <CategoryCard icon={Zap} title={t('home.categories.electrical')} count="85+" />
-            <CategoryCard icon={Shield} title={t('home.categories.cleaning')} count="200+" />
-            <CategoryCard icon={Users} title={t('home.categories.moving')} count="50+" />
-            <CategoryCard icon={Award} title={t('home.categories.painting')} count="90+" />
-            <CategoryCard icon={Star} title={t('home.categories.more')} count="View All" />
+            <CategoryCard icon={MapPin} identifier="plumbing" title={t('home.categories.plumbing', 'Plumbing')} count="120+" />
+            <CategoryCard icon={Zap} identifier="electrical" title={t('home.categories.electrical', 'Electrical')} count="85+" />
+            <CategoryCard icon={Shield} identifier="cleaning" title={t('home.categories.cleaning', 'Cleaning')} count="200+" />
+            <CategoryCard icon={Users} identifier="moving" title={t('home.categories.moving', 'Moving')} count="50+" />
+            <CategoryCard icon={Award} identifier="painting" title={t('home.categories.painting', 'Painting')} count="90+" />
+            <CategoryCard icon={CheckCircle} identifier="carpentry" title={t('home.categories.carpentry', 'Carpentry')} count="75+" />
+            <CategoryCard icon={Zap} identifier="hvac" title={t('home.categories.hvac', 'HVAC')} count="40+" />
+            <CategoryCard icon={Search} identifier="appliance" title={t('home.categories.appliance', 'Appliance Repair')} count="65+" />
+            <CategoryCard icon={Shield} identifier="web_development" title={t('home.categories.web_dev', 'Web Development')} count="150+" />
+            <CategoryCard icon={Award} identifier="graphic_design" title={t('home.categories.graphic_design', 'Graphic Design')} count="110+" />
+            <CategoryCard icon={Users} identifier="digital_marketing" title={t('home.categories.digital_marketing', 'Digital Marketing')} count="80+" />
+            <CategoryCard icon={MapPin} identifier="landscaping" title={t('home.categories.landscaping', 'Landscaping')} count="30+" />
           </div>
         </div>
       </section>

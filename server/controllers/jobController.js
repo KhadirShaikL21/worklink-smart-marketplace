@@ -24,14 +24,15 @@ export async function createJob(req, res) {
     location,
     workersNeeded = 1,
     preferences = {},
-    problemVideoUrl
+    problemVideoUrl,
+    assignedWorker // New direct booking feature
   } = req.body;
 
   if (!location?.coordinates) {
     return res.status(400).json({ message: 'Location required' });
   }
 
-  const job = await Job.create({
+  const jobObj = {
     customer: req.user._id,
     title,
     category,
@@ -48,10 +49,26 @@ export async function createJob(req, res) {
     media: {
       problemVideoUrl
     }
-  });
+  };
 
-  // Notify matching workers
-  if (skillsRequired.length > 0) {
+  if (assignedWorker) {
+    jobObj.assignedWorkers = [assignedWorker];
+    jobObj.status = 'assigned';
+  }
+
+  const job = await Job.create(jobObj);
+
+  if (assignedWorker) {
+    // Notify the specifically assigned worker
+    await notify({
+      userId: assignedWorker,
+      type: 'job_alert',
+      title: 'Direct Booking Request',
+      body: `You have been directly booked for "${title}"!`,
+      link: `/worker-jobs`,
+      metadata: { jobId: job._id }
+    });
+  } else if (skillsRequired.length > 0) {
     // Find workers with at least one matching skill
     const matchingProfiles = await WorkerProfile.find({
       skills: { $in: skillsRequired },
