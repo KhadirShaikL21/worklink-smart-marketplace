@@ -15,12 +15,12 @@ const env = {
   },
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   email: {
-    host: process.env.EMAIL_HOST || 'ethereal', // 'smtp.gmail.com' or 'ethereal'
-    port: Number(process.env.EMAIL_PORT) || 587,
-    secure: process.env.EMAIL_SECURE === 'true',
-    user: process.env.EMAIL_USER || '',
-    pass: process.env.EMAIL_PASS || '',
-    from: process.env.EMAIL_FROM || '"WorkLink" <no-reply@worklink.com>'
+    host: process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT || process.env.EMAIL_PORT) || 587,
+    secure: (process.env.SMTP_SECURE || process.env.EMAIL_SECURE) === 'true' ? true : false,
+    user: process.env.SMTP_USER || process.env.EMAIL_USER || '',
+    pass: process.env.SMTP_PASS || process.env.EMAIL_PASS || '',
+    from: process.env.EMAIL_FROM || '"WorkLink" <noreply@worklink.com>'
   },
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   serverUrl: process.env.SERVER_URL || 'http://localhost:5000'

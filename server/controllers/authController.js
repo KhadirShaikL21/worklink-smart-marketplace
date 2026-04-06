@@ -21,29 +21,36 @@ function buildTokens(user) {
   return { accessToken, refreshToken };
 }
 
-async function sendVerificationEmail(user) {
+async function sendVerificationEmail(user, saveOtp = true) {
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const codeHash = await bcrypt.hash(code, 10);
   
-  user.otp = {
-    codeHash,
-    expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-    attempts: 0,
-    channel: 'email',
-    lastSentAt: new Date()
-  };
-  await user.save();
+  if (saveOtp) {
+    user.otp = {
+      codeHash,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      attempts: 0,
+      channel: 'email',
+      lastSentAt: new Date()
+    };
+  }
 
-  await sendEmail({
-    to: user.email,
-    subject: 'Verify your WorkLink Account',
-    html: `
-      <h2>Welcome to WorkLink!</h2>
-      <p>Please verify your email address to continue.</p>
-      <p>Your verification code is: <strong>${code}</strong></p>
-      <p>This code will expire in 5 minutes.</p>
-    `
-  });
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: 'Verify your WorkLink Account',
+      html: `
+        <h2>Welcome to WorkLink!</h2>
+        <p>Please verify your email address to continue.</p>
+        <p>Your verification code is: <strong>${code}</strong></p>
+        <p>This code will expire in 5 minutes.</p>
+      `
+    });
+    return code;
+  } catch (err) {
+    console.error('Email send failed:', err.message);
+    throw err;
+  }
 }
 
 export async function register(req, res) {
@@ -78,11 +85,31 @@ export async function register(req, res) {
     avatarUrl: req.file ? req.file.path : undefined
   });
 
+  // Prepare OTP before saving
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpCodeHash = await bcrypt.hash(otpCode, 10);
+  user.otp = {
+    codeHash: otpCodeHash,
+    expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    attempts: 0,
+    channel: 'email',
+    lastSentAt: new Date()
+  };
+
+  // **SINGLE SAVE** with all user data
   await user.save();
 
+  // Build tokens
+  const { accessToken, refreshToken } = buildTokens(user);
+  user.refreshTokens.push({ token: refreshToken });
+  
+  // **SINGLE UPDATE** to add refresh token
+  await User.updateOne({ _id: user._id }, { refreshTokens: user.refreshTokens });
+
+  // Send worker profile update in background (don't wait)
   if (isWorkerBool) {
     const skills = (profileData.skills || []).filter(Boolean);
-    await WorkerProfile.findOneAndUpdate(
+    WorkerProfile.findOneAndUpdate(
       { user: user._id },
       {
         user: user._id,
@@ -96,21 +123,23 @@ export async function register(req, res) {
         toolsOwned: profileData.toolsOwned || []
       },
       { upsert: true, setDefaultsOnInsert: true }
-    );
-  }
-  
-  // Send Verification Email
-  try {
-    await sendVerificationEmail(user);
-  } catch (err) {
-    console.error('Failed to send verification email:', err);
+    ).catch(err => console.error('WorkerProfile update failed:', err));
   }
 
-  const { accessToken, refreshToken } = buildTokens(user);
-  user.refreshTokens.push({ token: refreshToken });
-  await user.save();
+  // **Send email asynchronously** (don't block response)
+  sendEmail({
+    to: user.email,
+    subject: 'Verify your WorkLink Account',
+    html: `
+      <h2>Welcome to WorkLink!</h2>
+      <p>Please verify your email address to continue.</p>
+      <p>Your verification code is: <strong>${otpCode}</strong></p>
+      <p>This code will expire in 5 minutes.</p>
+    `
+  }).catch(err => console.error('Failed to send verification email:', err));
 
   return res.status(201).json({
+    message: 'Registration successful. Check your email for verification code.',
     user: {
       id: user._id,
       name: user.name,
