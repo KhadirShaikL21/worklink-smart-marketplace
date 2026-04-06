@@ -77,6 +77,7 @@ async function createTransporter() {
 
 export async function sendEmail({ to, subject, html, text }) {
   try {
+    console.log(`📧 Sending email to ${to}...`);
     const transport = await createTransporter();
     
     const info = await transport.sendMail({
@@ -88,6 +89,8 @@ export async function sendEmail({ to, subject, html, text }) {
     });
 
     console.log('✓ Email sent successfully to:', to);
+    console.log('   Message ID:', info.messageId);
+    console.log('   Response:', info.response);
     
     if (!transporterReady || env.email.host === 'smtp.ethereal.email') {
       console.log('📧 Preview URL:', nodemailer.getTestMessageUrl(info));
@@ -95,7 +98,9 @@ export async function sendEmail({ to, subject, html, text }) {
 
     return info;
   } catch (err) {
-    console.error('✗ Email send failed for:', to, err.message);
+    console.error('✗ Email send failed for:', to);
+    console.error('   Error:', err.message);
+    console.error('   Full error:', err);
     throw new Error(`Email failed: ${err.message}`);
   }
 }

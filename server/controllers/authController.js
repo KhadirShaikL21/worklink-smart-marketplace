@@ -136,7 +136,11 @@ export async function register(req, res) {
       <p>Your verification code is: <strong>${otpCode}</strong></p>
       <p>This code will expire in 5 minutes.</p>
     `
-  }).catch(err => console.error('Failed to send verification email:', err));
+  }).then(() => {
+    console.log(`✅ Verification email sent to ${user.email}`);
+  }).catch(err => {
+    console.error(`❌ Failed to send verification email to ${user.email}: ${err.message}`);
+  });
 
   return res.status(201).json({
     message: 'Registration successful. Check your email for verification code.',
